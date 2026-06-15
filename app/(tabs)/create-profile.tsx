@@ -1,0 +1,45 @@
+import { useState } from 'react';
+import { Alert, View, Text, StyleSheet } from 'react-native';
+import { router } from 'expo-router';
+import { ProfileForm, ProfileFormValues } from '../../src/components/shared/ProfileForm';
+import { createProfile } from '../../src/services/profile.service';
+import { useAuthStore } from '../../src/store/auth.store';
+import { useActiveProfileStore } from '../../src/store/activeProfile.store';
+
+export default function CreateProfileScreen() {
+  const userId     = useAuthStore((s) => s.userId);
+  const setProfile = useActiveProfileStore((s) => s.setProfile);
+  const [loading, setLoading] = useState(false);
+
+  async function handleSave(values: ProfileFormValues) {
+    if (!values.name.trim()) return Alert.alert('Name is required');
+    if (!userId) return;
+    setLoading(true);
+    try {
+      const profile = await createProfile(userId, values);
+      setProfile(profile);
+      router.back();
+    } catch {
+      Alert.alert('Error', 'Could not create profile');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.header}>New Profile</Text>
+      <ProfileForm
+        onSave={handleSave}
+        onCancel={() => router.back()}
+        submitLabel="Create Profile"
+        loading={loading}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#F7FAFC' },
+  header:    { fontSize: 22, fontWeight: '700', color: '#1A202C', padding: 20, paddingBottom: 0 },
+});
