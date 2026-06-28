@@ -1,35 +1,31 @@
-export type WeightUnit = 'kg' | 'lbs' | 'st';
+export type HeightUnit = 'cm' | 'ft';
 
-export function toKg(primary: number, unit: WeightUnit, lbsPart = 0): number {
-  if (unit === 'kg')  return primary;
-  if (unit === 'lbs') return primary / 2.20462;
-  // stones: primary = whole stones, lbsPart = remaining lbs
-  return ((primary * 14) + lbsPart) / 2.20462;
+export function toCm(primary: number, unit: HeightUnit, inchesPart = 0): number {
+  if (unit === 'cm') return primary;
+  // ft: primary = whole feet, inchesPart = remaining inches
+  return (primary * 30.48) + (inchesPart * 2.54);
 }
 
-export function fromKg(kg: number, unit: WeightUnit): { primary: number; secondary?: number } {
-  if (unit === 'kg')  return { primary: Math.round(kg * 10) / 10 };
-  if (unit === 'lbs') return { primary: Math.round(kg * 2.20462 * 10) / 10 };
-  const totalLbs = kg * 2.20462;
-  const stones   = Math.floor(totalLbs / 14);
-  const lbs      = Math.round((totalLbs % 14) * 10) / 10;
-  return { primary: stones, secondary: lbs };
+export function fromCm(cm: number, unit: HeightUnit): { primary: number; secondary?: number } {
+  if (unit === 'cm') return { primary: Math.round(cm * 10) / 10 };
+  const totalInches = cm / 2.54;
+  const feet        = Math.floor(totalInches / 12);
+  const inches      = Math.round((totalInches % 12) * 10) / 10;
+  return { primary: feet, secondary: inches };
 }
 
-export function formatWeight(kg: number, unit: WeightUnit): string {
-  const { primary, secondary } = fromKg(kg, unit);
-  if (unit === 'kg')  return `${primary} kg`;
-  if (unit === 'lbs') return `${primary} lbs`;
-  return `${primary} st ${secondary} lbs`;
+export function formatHeight(cm: number, unit: HeightUnit): string {
+  const { primary, secondary } = fromCm(cm, unit);
+  if (unit === 'cm') return `${primary} cm`;
+  return `${primary} ft ${secondary} in`;
 }
 
-// For graph y-axis: stones profiles plot in lbs for a clean number line
-export function toGraphValue(kg: number, unit: WeightUnit): number {
-  if (unit === 'kg')  return Math.round(kg * 10) / 10;
-  if (unit === 'lbs') return Math.round(kg * 2.20462 * 10) / 10;
-  return Math.round(kg * 2.20462 * 10) / 10; // stones → use lbs on axis
+// For graph y-axis: ft profiles plot in total inches for a clean number line
+export function toGraphValue(cm: number, unit: HeightUnit): number {
+  if (unit === 'cm') return Math.round(cm * 10) / 10;
+  return Math.round((cm / 2.54) * 10) / 10;
 }
 
-export function graphAxisLabel(unit: WeightUnit): string {
-  return unit === 'kg' ? 'kg' : 'lbs';
+export function graphAxisLabel(unit: HeightUnit): string {
+  return unit === 'cm' ? 'cm' : 'in';
 }

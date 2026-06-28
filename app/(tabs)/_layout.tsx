@@ -1,12 +1,10 @@
 import { Tabs } from 'expo-router';
-import { ProfileSwitcher } from '../../src/components/shared/ProfileSwitcher';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        headerRight: () => <ProfileSwitcher />,
         headerStyle:      { backgroundColor: '#fff' },
         headerTitleStyle: { fontWeight: '700', color: '#1A202C' },
         tabBarActiveTintColor:   '#4A90D9',
@@ -50,6 +48,17 @@ export default function TabLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: 'Settings',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="settings-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen name="create-profile" options={{ href: null }} />
+      <Tabs.Screen name="edit-profile"   options={{ href: null }} />
     </Tabs>
   );
 }

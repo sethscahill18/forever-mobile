@@ -14,7 +14,7 @@ export async function createProfile(
 ): Promise<Profile> {
   const id = ExpoCrypto.randomUUID();
   const now = Date.now();
-  await db.insert(profiles).values({ id, userId, createdAt: now, ...data });
+  await db.insert(profiles).values({ id, userId, createdAt: now, heightUnit: 'cm', ...data });
   const [created] = await db.select().from(profiles).where(eq(profiles.id, id));
   return created;
 }

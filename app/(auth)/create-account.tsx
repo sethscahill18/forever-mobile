@@ -3,6 +3,7 @@ import {
   View, Text, TextInput, Pressable, StyleSheet,
   KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { createAccount } from '../../src/services/auth.service';
 import { useAuthStore } from '../../src/store/auth.store';
@@ -13,6 +14,7 @@ export default function CreateAccountScreen() {
   const [name,     setName]     = useState('');
   const [password, setPassword] = useState('');
   const [confirm,  setConfirm]  = useState('');
+  const [showPw,   setShowPw]   = useState(false);
   const [loading,  setLoading]  = useState(false);
   const setAuth = useAuthStore((s) => s.setAuth);
 
@@ -45,27 +47,36 @@ export default function CreateAccountScreen() {
         <Text style={styles.title}>Create Account</Text>
         <Text style={styles.subtitle}>Set up your Forever profile</Text>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Your name"
-          value={name}
-          onChangeText={setName}
-          autoCapitalize="words"
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Password (min 6 characters)"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Confirm password"
-          value={confirm}
-          onChangeText={setConfirm}
-          secureTextEntry
-        />
+        <View style={styles.inputRow}>
+          <TextInput
+            style={styles.inputFlex}
+            placeholder="Your name"
+            value={name}
+            onChangeText={setName}
+            autoCapitalize="words"
+          />
+        </View>
+        <View style={styles.inputRow}>
+          <TextInput
+            style={styles.inputFlex}
+            placeholder="Password (min 6 characters)"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry={!showPw}
+          />
+          <Pressable onPress={() => setShowPw((v) => !v)} style={styles.eyeBtn} hitSlop={8}>
+            <Ionicons name={showPw ? 'eye-off-outline' : 'eye-outline'} size={22} color="#718096" />
+          </Pressable>
+        </View>
+        <View style={styles.inputRow}>
+          <TextInput
+            style={styles.inputFlex}
+            placeholder="Confirm password"
+            value={confirm}
+            onChangeText={setConfirm}
+            secureTextEntry={!showPw}
+          />
+        </View>
 
         <Pressable
           style={[styles.button, loading && styles.buttonDisabled]}
@@ -86,14 +97,22 @@ const styles = StyleSheet.create({
   inner:     { flex: 1, justifyContent: 'center', padding: 32 },
   title:     { fontSize: 28, fontWeight: '700', color: '#1A202C', marginBottom: 6 },
   subtitle:  { fontSize: 15, color: '#718096', marginBottom: 32 },
-  input: {
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#E2E8F0',
     borderRadius: 10,
+    marginBottom: 14,
+  },
+  inputFlex: {
+    flex: 1,
     padding: 14,
     fontSize: 16,
-    marginBottom: 14,
+  },
+  eyeBtn: {
+    paddingHorizontal: 12,
   },
   button: {
     backgroundColor: '#4A90D9',

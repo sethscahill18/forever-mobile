@@ -18,14 +18,16 @@ export const profiles = sqliteTable('profiles', {
   bowlVariant:     integer('bowl_variant').notNull().default(0),
   plantpotVariant: integer('plantpot_variant').notNull().default(0),
   wallVariant:     integer('wall_variant').notNull().default(0),
-  weightUnit:      text('weight_unit').notNull().default('kg'),
+  heightUnit:      text('height_unit').notNull().default('cm'),
   createdAt:       integer('created_at').notNull(),
 });
 
 export const measurements = sqliteTable('measurements', {
   id:            text('id').primaryKey(),
   profileId:     text('profile_id').notNull().references(() => profiles.id, { onDelete: 'cascade' }),
-  weightKg:      real('weight_kg').notNull(),
+  heightCm:      real('height_cm').notNull(),
+  heightFt:      integer('height_ft'),
+  heightIn:      real('height_in'),
   measuredAt:    integer('measured_at').notNull(),
   isMilestone:   integer('is_milestone').notNull().default(0),
   milestoneName: text('milestone_name'),

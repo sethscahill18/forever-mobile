@@ -40,3 +40,7 @@ export async function getCredentials(): Promise<Credentials | null> {
   const raw = await SecureStore.getItemAsync(KEY);
   return raw ? JSON.parse(raw) : null;
 }
+
+export async function clearCredentials(): Promise<void> {
+  await SecureStore.deleteItemAsync(KEY);
+}

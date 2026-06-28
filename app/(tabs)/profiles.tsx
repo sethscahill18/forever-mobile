@@ -1,17 +1,13 @@
 import { useCallback, useState } from 'react';
-import {
-  View, Text, FlatList, Pressable, StyleSheet, Alert,
-} from 'react-native';
+import { View, Text, FlatList, Pressable, StyleSheet, Alert } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { useAuthStore } from '../../src/store/auth.store';
 import { getProfiles, deleteProfile } from '../../src/services/profile.service';
-import { useActiveProfileStore } from '../../src/store/activeProfile.store';
 import { Profile } from '../../src/db/schema';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function ProfilesScreen() {
-  const userId       = useAuthStore((s) => s.userId);
-  const activeId     = useActiveProfileStore((s) => s.profile?.id);
+  const userId = useAuthStore((s) => s.userId);
   const [list, setList] = useState<Profile[]>([]);
 
   useFocusEffect(
@@ -48,23 +44,26 @@ export default function ProfilesScreen() {
         }
         renderItem={({ item }) => (
           <Pressable
-            style={[styles.row, item.id === activeId && styles.rowActive]}
-            onPress={() => router.push({ pathname: '/(tabs)/edit-profile', params: { id: item.id } })}
+            style={styles.row}
+            onPress={() => router.push({ pathname: '/profile-timeline', params: { id: item.id } })}
           >
             <View style={styles.rowLeft}>
               <View style={styles.avatar}>
-                <Text style={styles.avatarText}>
-                  {item.name.charAt(0).toUpperCase()}
-                </Text>
+                <Text style={styles.avatarText}>{item.name.charAt(0).toUpperCase()}</Text>
               </View>
-              <View>
-                <Text style={styles.name}>{item.name}</Text>
-                <Text style={styles.unit}>Weight in {item.weightUnit}</Text>
-              </View>
+              <Text style={styles.name}>{item.name}</Text>
             </View>
-            <Pressable onPress={() => handleDelete(item)} hitSlop={12}>
-              <Ionicons name="trash-outline" size={20} color="#FC8181" />
-            </Pressable>
+            <View style={styles.rowActions}>
+              <Pressable
+                onPress={() => router.push({ pathname: '/(tabs)/edit-profile', params: { id: item.id } })}
+                hitSlop={12}
+              >
+                <Ionicons name="create-outline" size={20} color="#A0AEC0" />
+              </Pressable>
+              <Pressable onPress={() => handleDelete(item)} hitSlop={12}>
+                <Ionicons name="trash-outline" size={20} color="#FC8181" />
+              </Pressable>
+            </View>
           </Pressable>
         )}
       />
@@ -83,6 +82,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F7FAFC' },
   list:      { padding: 16, paddingBottom: 100 },
   empty:     { textAlign: 'center', color: '#A0AEC0', marginTop: 60, fontSize: 15 },
+
   row: {
     backgroundColor: '#fff',
     borderRadius: 12,
@@ -96,15 +96,14 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  rowActive:  { borderWidth: 2, borderColor: '#4A90D9' },
   rowLeft:    { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  rowActions: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   avatar: {
     width: 44, height: 44, borderRadius: 22,
     backgroundColor: '#4A90D9', alignItems: 'center', justifyContent: 'center',
   },
   avatarText: { color: '#fff', fontWeight: '700', fontSize: 18 },
-  name:       { fontSize: 16, fontWeight: '600', color: '#2D3748' },
-  unit:       { fontSize: 12, color: '#A0AEC0', marginTop: 2 },
+  name: { fontSize: 16, fontWeight: '600', color: '#2D3748' },
   fab: {
     position: 'absolute', bottom: 28, right: 24,
     width: 56, height: 56, borderRadius: 28,

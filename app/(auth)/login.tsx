@@ -3,12 +3,14 @@ import {
   View, Text, TextInput, Pressable, StyleSheet,
   KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { login, getCredentials } from '../../src/services/auth.service';
 import { useAuthStore } from '../../src/store/auth.store';
 
 export default function LoginScreen() {
-  const [password, setPassword] = useState('');
-  const [loading,  setLoading]  = useState(false);
+  const [password,  setPassword]  = useState('');
+  const [showPw,    setShowPw]    = useState(false);
+  const [loading,   setLoading]   = useState(false);
   const setAuth = useAuthStore((s) => s.setAuth);
 
   async function handleLogin() {
@@ -37,14 +39,19 @@ export default function LoginScreen() {
         <Text style={styles.title}>Welcome back</Text>
         <Text style={styles.subtitle}>Enter your password to continue</Text>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          autoFocus
-        />
+        <View style={styles.inputRow}>
+          <TextInput
+            style={styles.inputFlex}
+            placeholder="Password"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry={!showPw}
+            autoFocus
+          />
+          <Pressable onPress={() => setShowPw((v) => !v)} style={styles.eyeBtn} hitSlop={8}>
+            <Ionicons name={showPw ? 'eye-off-outline' : 'eye-outline'} size={22} color="#718096" />
+          </Pressable>
+        </View>
 
         <Pressable
           style={[styles.button, loading && styles.buttonDisabled]}
@@ -63,14 +70,22 @@ const styles = StyleSheet.create({
   inner:     { flex: 1, justifyContent: 'center', padding: 32 },
   title:     { fontSize: 28, fontWeight: '700', color: '#1A202C', marginBottom: 6 },
   subtitle:  { fontSize: 15, color: '#718096', marginBottom: 32 },
-  input: {
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#E2E8F0',
     borderRadius: 10,
+    marginBottom: 14,
+  },
+  inputFlex: {
+    flex: 1,
     padding: 14,
     fontSize: 16,
-    marginBottom: 14,
+  },
+  eyeBtn: {
+    paddingHorizontal: 12,
   },
   button: {
     backgroundColor: '#4A90D9',

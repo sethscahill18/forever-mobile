@@ -29,14 +29,16 @@ export async function initDatabase() {
       bowl_variant INTEGER NOT NULL DEFAULT 0,
       plantpot_variant INTEGER NOT NULL DEFAULT 0,
       wall_variant INTEGER NOT NULL DEFAULT 0,
-      weight_unit TEXT NOT NULL DEFAULT 'kg',
+      height_unit TEXT NOT NULL DEFAULT 'cm',
       created_at INTEGER NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS measurements (
       id TEXT PRIMARY KEY NOT NULL,
       profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-      weight_kg REAL NOT NULL,
+      height_cm REAL NOT NULL,
+      height_ft INTEGER,
+      height_in REAL,
       measured_at INTEGER NOT NULL,
       is_milestone INTEGER NOT NULL DEFAULT 0,
       milestone_name TEXT,
