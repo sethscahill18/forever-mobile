@@ -7,19 +7,16 @@ export const users = sqliteTable('users', {
 });
 
 export const profiles = sqliteTable('profiles', {
-  id:              text('id').primaryKey(),
-  userId:          text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  name:            text('name').notNull(),
-  avatarGender:    text('avatar_gender').notNull().default('male'),
-  avatarWidth:     integer('avatar_width').notNull().default(0),
-  avatarSkinTone:  integer('avatar_skin_tone').notNull().default(0),
-  avatarHairStyle: integer('avatar_hair_style').notNull().default(0),
-  tableVariant:    integer('table_variant').notNull().default(0),
-  bowlVariant:     integer('bowl_variant').notNull().default(0),
-  plantpotVariant: integer('plantpot_variant').notNull().default(0),
-  wallVariant:     integer('wall_variant').notNull().default(0),
-  heightUnit:      text('height_unit').notNull().default('cm'),
-  createdAt:       integer('created_at').notNull(),
+  id:          text('id').primaryKey(),
+  userId:      text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  name:        text('name').notNull(),
+  theme:       text('theme').notNull().default('red'),
+  doorStyle:   text('door_style').notNull().default('style_1'),
+  doorColour:  text('door_colour').notNull().default('black'),
+  handleStyle: text('handle_style').notNull().default('handle_style_1'),
+  shelfItems:  text('shelf_items').notNull().default('rocket_1'),
+  heightUnit:  text('height_unit').notNull().default('cm'),
+  createdAt:   integer('created_at').notNull(),
 });
 
 export const measurements = sqliteTable('measurements', {

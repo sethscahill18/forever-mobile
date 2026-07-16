@@ -36,8 +36,7 @@ export default function RootLayout() {
           const rows = await db.select().from(users);
           if (rows.length === 0) await clearCredentials();
         }
-        const stillExists = exists && (await hasAccount());
-        router.replace(stillExists ? '/(auth)/login' : '/(auth)/create-account');
+        router.replace('/(auth)/login');
       })();
     }
   }, [ready, userId]);

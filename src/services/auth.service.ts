@@ -28,10 +28,11 @@ export async function createAccount(
   return userId;
 }
 
-export async function login(password: string): Promise<Credentials | null> {
+export async function login(displayName: string, password: string): Promise<Credentials | null> {
   const raw = await SecureStore.getItemAsync(KEY);
   if (!raw) return null;
   const creds: Credentials = JSON.parse(raw);
+  if (creds.displayName.toLowerCase() !== displayName.trim().toLowerCase()) return null;
   const hash = CryptoJS.SHA256(password + creds.salt).toString();
   return hash === creds.passwordHash ? creds : null;
 }
