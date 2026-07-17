@@ -7,6 +7,7 @@ import { Profile } from '../../db/schema';
 
 export type ProfileFormValues = {
   name:        string;
+  avatar:      'baby' | 'child' | 'teenager' | 'adult';
   theme:       'red' | 'blue' | 'green';
   doorStyle:   'style_1' | 'style_2' | 'style_3';
   doorColour:  'black' | 'brown' | 'red';
@@ -17,6 +18,7 @@ export type ProfileFormValues = {
 function defaults(profile?: Profile): ProfileFormValues {
   return {
     name:        profile?.name        ?? '',
+    avatar:      (profile?.avatar      as ProfileFormValues['avatar'])      ?? 'child',
     theme:       (profile?.theme       as ProfileFormValues['theme'])       ?? 'red',
     doorStyle:   (profile?.doorStyle   as ProfileFormValues['doorStyle'])   ?? 'style_1',
     doorColour:  (profile?.doorColour  as ProfileFormValues['doorColour'])  ?? 'black',
@@ -32,6 +34,13 @@ type Props = {
   submitLabel: string;
   loading:     boolean;
 };
+
+const AVATAR_OPTIONS: { value: ProfileFormValues['avatar']; label: string }[] = [
+  { value: 'baby',     label: 'Baby'     },
+  { value: 'child',    label: 'Child'    },
+  { value: 'teenager', label: 'Teenager' },
+  { value: 'adult',    label: 'Adult'    },
+];
 
 const THEME_OPTIONS: { value: ProfileFormValues['theme']; label: string }[] = [
   { value: 'red',   label: 'Red'   },
@@ -110,6 +119,9 @@ export function ProfileForm({ initial, onSave, onCancel, submitLabel, loading }:
           onChangeText={(v) => set('name', v)}
           autoCapitalize="words"
         />
+
+        <Text style={styles.label}>Avatar</Text>
+        <OptionRow value={values.avatar} options={AVATAR_OPTIONS} onChange={(v) => set('avatar', v)} />
 
         <Text style={styles.label}>Theme</Text>
         <OptionRow value={values.theme} options={THEME_OPTIONS} onChange={(v) => set('theme', v)} />

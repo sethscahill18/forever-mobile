@@ -10,6 +10,7 @@ export const profiles = sqliteTable('profiles', {
   id:          text('id').primaryKey(),
   userId:      text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   name:        text('name').notNull(),
+  avatar:      text('avatar').notNull().default('child'),
   theme:       text('theme').notNull().default('red'),
   doorStyle:   text('door_style').notNull().default('style_1'),
   doorColour:  text('door_colour').notNull().default('black'),
