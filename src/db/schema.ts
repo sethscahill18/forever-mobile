@@ -27,9 +27,10 @@ export const measurements = sqliteTable('measurements', {
   heightFt:      integer('height_ft'),
   heightIn:      real('height_in'),
   measuredAt:    integer('measured_at').notNull(),
-  isMilestone:   integer('is_milestone').notNull().default(0),
-  milestoneName: text('milestone_name'),
-  notes:         text('notes'),
+  isMilestone:    integer('is_milestone').notNull().default(0),
+  milestoneName:  text('milestone_name'),
+  milestoneImage: text('milestone_image'),
+  notes:          text('notes'),
   createdAt:     integer('created_at').notNull(),
 });
 

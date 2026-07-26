@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, Dimensions, Pressable } from 'react-native';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue, useAnimatedStyle, withSpring, runOnJS,
@@ -57,14 +57,26 @@ function formatMeasurement(m: Measurement, unit: 'cm' | 'ft') {
 }
 
 // ─── Height chart ─────────────────────────────────────────────────────────────
-type ChartPoint = { x: number; y: number; label: string };
+function starPath(cx: number, cy: number, outerR: number, innerR: number): string {
+  const pts: string[] = [];
+  for (let i = 0; i < 10; i++) {
+    const angle = (i * Math.PI) / 5 - Math.PI / 2;
+    const r = i % 2 === 0 ? outerR : innerR;
+    pts.push(`${(cx + r * Math.cos(angle)).toFixed(2)},${(cy + r * Math.sin(angle)).toFixed(2)}`);
+  }
+  return `M${pts[0]} L${pts.slice(1).join(' L')} Z`;
+}
+
+type ChartPoint = { x: number; y: number; label: string; measurement: Measurement };
 
 function HeightChart({
   measurements,
   primaryUnit,
+  onMeasurementPress,
 }: {
   measurements: Measurement[];
   primaryUnit: 'cm' | 'ft';
+  onMeasurementPress?: (m: Measurement) => void;
 }) {
   const [w, setW] = useState(0);
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
@@ -73,9 +85,10 @@ function HeightChart({
     .filter((m) => m.heightCm > 0)
     .sort((a, b) => a.measuredAt - b.measuredAt)
     .map((m) => ({
-      x:     m.measuredAt,
-      y:     toGraphValue(m.heightCm, primaryUnit),
-      label: formatMeasurement(m, primaryUnit),
+      x:           m.measuredAt,
+      y:           toGraphValue(m.heightCm, primaryUnit),
+      label:       formatMeasurement(m, primaryUnit),
+      measurement: m,
     }));
 
   const cW = Math.max(w - PAD_L - PAD_R, 1);
@@ -117,6 +130,15 @@ function HeightChart({
 
   function handlePress(tapX: number, tapY: number) {
     if (data.length === 0) return;
+    // If tooltip is visible and tap lands on it, open the detail screen
+    if (selectedIdx !== null && tip !== null) {
+      if (tapX >= tip.x && tapX <= tip.x + TIP_W &&
+          tapY >= tip.y && tapY <= tip.y + TIP_H) {
+        onMeasurementPress?.(data[selectedIdx].measurement);
+        return;
+      }
+    }
+    // Otherwise select/deselect the nearest dot
     const found = data.reduce<{ idx: number; dist: number } | null>((acc, d, i) => {
       const dist = Math.sqrt((tapX - px(d.x)) ** 2 + (tapY - py(d.y)) ** 2);
       if (dist < HIT_R && (!acc || dist < acc.dist)) return { idx: i, dist };
@@ -169,15 +191,35 @@ function HeightChart({
             )}
 
             {selectedIdx !== null && (
-              <Circle cx={px(data[selectedIdx].x)} cy={py(data[selectedIdx].y)}
-                r={12} fill="rgba(74,144,217,0.16)" />
+              <Circle
+                cx={px(data[selectedIdx].x)} cy={py(data[selectedIdx].y)}
+                r={12}
+                fill={data[selectedIdx].measurement.isMilestone === 1
+                  ? 'rgba(214,158,46,0.18)'
+                  : 'rgba(74,144,217,0.16)'}
+              />
             )}
-            {data.map((d, i) => (
-              <Circle key={i} cx={px(d.x)} cy={py(d.y)}
-                r={i === selectedIdx ? 6 : 5}
-                fill={i === selectedIdx ? '#fff' : '#4A90D9'}
-                stroke="#4A90D9" strokeWidth={i === selectedIdx ? 2.5 : 2} />
-            ))}
+            {data.map((d, i) => {
+              const sel = i === selectedIdx;
+              if (d.measurement.isMilestone === 1) {
+                return (
+                  <Path
+                    key={i}
+                    d={starPath(px(d.x), py(d.y), sel ? 8 : 7, sel ? 3.5 : 3)}
+                    fill={sel ? '#fff' : '#D69E2E'}
+                    stroke="#D69E2E"
+                    strokeWidth={sel ? 2 : 1.5}
+                    strokeLinejoin="round"
+                  />
+                );
+              }
+              return (
+                <Circle key={i} cx={px(d.x)} cy={py(d.y)}
+                  r={sel ? 6 : 5}
+                  fill={sel ? '#fff' : '#4A90D9'}
+                  stroke="#4A90D9" strokeWidth={sel ? 2.5 : 2} />
+              );
+            })}
 
             {data.map((d, i) => {
               if (i % xStep !== 0 && i !== data.length - 1) return null;
@@ -232,13 +274,15 @@ export default function ProfileKitchenScreen() {
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
   const [isExpanded,   setIsExpanded]   = useState(false);
 
-  useEffect(() => {
-    if (!id) return;
-    db.select().from(profiles).where(eq(profiles.id, id)).then(([p]) => {
-      if (p) setProfile(p);
-    });
-    getMeasurements(id).then(setMeasurements);
-  }, [id]);
+  useFocusEffect(
+    useCallback(() => {
+      if (!id) return;
+      db.select().from(profiles).where(eq(profiles.id, id)).then(([p]) => {
+        if (p) setProfile(p);
+      });
+      getMeasurements(id).then(setMeasurements);
+    }, [id]),
+  );
 
   const latest     = measurements[0] ?? null;
   const milestones = measurements.filter((m) => m.isMilestone === 1);
@@ -332,7 +376,13 @@ export default function ProfileKitchenScreen() {
             contentContainerStyle={styles.scrollContent}
           >
             <Text style={styles.sectionTitle}>Journey</Text>
-            <HeightChart measurements={measurements} primaryUnit={primaryUnit} />
+            <HeightChart
+              measurements={measurements}
+              primaryUnit={primaryUnit}
+              onMeasurementPress={(m) =>
+                router.push({ pathname: '/measurement-detail', params: { id: m.id, profileName: profile?.name ?? '' } })
+              }
+            />
 
             <Text style={[styles.sectionTitle, styles.sectionTitleGap]}>Milestones</Text>
             {milestones.length === 0 ? (
@@ -353,6 +403,18 @@ export default function ProfileKitchenScreen() {
               ))
             )}
 
+            <Pressable
+              style={styles.allMeasurementsBtn}
+              onPress={() =>
+                router.push({
+                  pathname: '/all-measurements',
+                  params: { profileId: id, profileName: profile?.name ?? '' },
+                })
+              }
+            >
+              <Text style={styles.allMeasurementsBtnText}>All Measurements</Text>
+            </Pressable>
+
             <View style={styles.scrollPad} />
           </ScrollView>
         </Animated.View>
@@ -368,7 +430,8 @@ const styles = StyleSheet.create({
 
   // Kitchen scene
   kitchen: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 0, bottom: 0, left: 0, right: 0,
     padding: 24,
     gap: 16,
     justifyContent: 'center',
@@ -432,4 +495,7 @@ const styles = StyleSheet.create({
   milestoneRight: { alignItems: 'flex-end', gap: 2 },
   milestoneValue: { fontSize: 15, fontWeight: '700', color: '#4A90D9' },
   milestoneDate:  { fontSize: 12, color: '#A0AEC0' },
+
+  allMeasurementsBtn:     { marginTop: 24, backgroundColor: '#4A90D9', borderRadius: 12, padding: 16, alignItems: 'center' },
+  allMeasurementsBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
 });

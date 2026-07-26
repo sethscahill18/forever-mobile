@@ -21,14 +21,12 @@ export async function initDatabase() {
       id TEXT PRIMARY KEY NOT NULL,
       user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       name TEXT NOT NULL,
-      avatar_gender TEXT NOT NULL DEFAULT 'male',
-      avatar_width INTEGER NOT NULL DEFAULT 0,
-      avatar_skin_tone INTEGER NOT NULL DEFAULT 0,
-      avatar_hair_style INTEGER NOT NULL DEFAULT 0,
-      table_variant INTEGER NOT NULL DEFAULT 0,
-      bowl_variant INTEGER NOT NULL DEFAULT 0,
-      plantpot_variant INTEGER NOT NULL DEFAULT 0,
-      wall_variant INTEGER NOT NULL DEFAULT 0,
+      avatar TEXT NOT NULL DEFAULT 'child',
+      theme TEXT NOT NULL DEFAULT 'red',
+      door_style TEXT NOT NULL DEFAULT 'style_1',
+      door_colour TEXT NOT NULL DEFAULT 'black',
+      handle_style TEXT NOT NULL DEFAULT 'handle_style_1',
+      shelf_items TEXT NOT NULL DEFAULT 'rocket_1',
       height_unit TEXT NOT NULL DEFAULT 'cm',
       created_at INTEGER NOT NULL
     );
@@ -52,4 +50,11 @@ export async function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_measurements_milestone
       ON measurements(profile_id, is_milestone);
   `);
+
+  // Add milestone_image column to existing databases without requiring a reinstall
+  try {
+    await sqlite.execAsync(`ALTER TABLE measurements ADD COLUMN milestone_image TEXT;`);
+  } catch (_) {
+    // Column already exists on fresh installs
+  }
 }

@@ -15,6 +15,13 @@ export async function deleteMeasurement(id: string): Promise<void> {
   await db.delete(measurements).where(eq(measurements.id, id));
 }
 
+export async function updateMeasurement(
+  id: string,
+  data: { isMilestone: number; milestoneName?: string | null; milestoneImage?: string | null },
+): Promise<void> {
+  await db.update(measurements).set(data).where(eq(measurements.id, id));
+}
+
 export async function saveMeasurement(
   profileId: string,
   heightCm: number,
