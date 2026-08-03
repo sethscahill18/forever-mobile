@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 844">
+  <!-- Handle style 2: lever handle -->
+  <!-- Backplate -->
+  <rect x="243" y="404" width="8" height="36" rx="3" fill="#B8860B"/>
+  <!-- Lever arm (horizontal) -->
+  <rect x="220" y="416" width="25" height="7" rx="3.5" fill="#DAA520"/>
+  <!-- Lever end cap -->
+  <circle cx="221" cy="419" r="5" fill="#C9961E"/>
+</svg>

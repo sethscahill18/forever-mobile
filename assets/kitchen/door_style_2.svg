@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 844">
+  <!-- Door frame: two-panel with horizontal rail (style 2) -->
+  <!-- Left stile -->
+  <rect x="85" y="78" width="10" height="644" fill="#8B6914"/>
+  <!-- Right stile -->
+  <rect x="255" y="78" width="10" height="644" fill="#8B6914"/>
+  <!-- Top rail -->
+  <rect x="85" y="78" width="180" height="10" fill="#8B6914"/>
+  <!-- Bottom rail -->
+  <rect x="85" y="716" width="180" height="6" fill="#8B6914"/>
+  <!-- Mid horizontal rail -->
+  <rect x="95" y="392" width="160" height="14" fill="#8B6914"/>
+  <!-- Door shadow (right edge) -->
+  <rect x="264" y="80" width="3" height="638" fill="#00000020"/>
+  <!-- Door shadow (bottom) -->
+  <rect x="88" y="720" width="174" height="3" fill="#00000018"/>
+</svg>

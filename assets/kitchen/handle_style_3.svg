@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 844">
+  <!-- Handle style 3: bar/pull handle -->
+  <!-- Top mount -->
+  <circle cx="247" cy="400" r="5" fill="#B8860B"/>
+  <!-- Bar -->
+  <rect x="244" y="400" width="6" height="46" rx="3" fill="#DAA520"/>
+  <!-- Bottom mount -->
+  <circle cx="247" cy="446" r="5" fill="#B8860B"/>
+</svg>

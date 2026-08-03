@@ -1,69 +1,91 @@
 import { useCallback, useState } from 'react';
-import { View, Text, FlatList, Pressable, StyleSheet, Alert } from 'react-native';
+import { View, Text, FlatList, Pressable, StyleSheet, Image } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { useAuthStore } from '../../src/store/auth.store';
-import { getProfiles, deleteProfile } from '../../src/services/profile.service';
-import { Profile } from '../../src/db/schema';
+import { useSettingsStore } from '../../src/store/settings.store';
+import { getProfiles } from '../../src/services/profile.service';
+import { getMeasurements } from '../../src/services/measurement.service';
+import { Profile, Measurement } from '../../src/db/schema';
 import { Ionicons } from '@expo/vector-icons';
+import { formatHeight } from '../../src/utils/weight';
+
+type ProfileCard = { profile: Profile; latest: Measurement | null };
+
+function timeAgo(ts: number): string {
+  const days = Math.floor((Date.now() - ts) / 86_400_000);
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+  if (days < 7)  return `${days} days ago`;
+  if (days < 30) {
+    const weeks = Math.floor(days / 7);
+    return `${weeks} week${weeks > 1 ? 's' : ''} ago`;
+  }
+  const months = Math.floor(days / 30);
+  return `${months} month${months > 1 ? 's' : ''} ago`;
+}
+
+function formatMeasurement(m: Measurement, unit: 'cm' | 'ft'): string {
+  if (unit === 'ft' && m.heightFt != null && m.heightIn != null)
+    return `${m.heightFt} ft ${m.heightIn} in`;
+  return formatHeight(m.heightCm, unit);
+}
 
 export default function ProfilesScreen() {
-  const userId = useAuthStore((s) => s.userId);
-  const [list, setList] = useState<Profile[]>([]);
+  const userId      = useAuthStore((s) => s.userId);
+  const primaryUnit = useSettingsStore((s) => s.primaryUnit);
+  const [cards, setCards] = useState<ProfileCard[]>([]);
 
   useFocusEffect(
     useCallback(() => {
-      if (userId) getProfiles(userId).then(setList);
+      if (!userId) return;
+      getProfiles(userId).then(async (profiles) => {
+        const built = await Promise.all(
+          profiles.map(async (profile) => {
+            const measurements = await getMeasurements(profile.id);
+            return { profile, latest: measurements[0] ?? null };
+          }),
+        );
+        setCards(built);
+      });
     }, [userId]),
   );
-
-  function handleDelete(profile: Profile) {
-    Alert.alert(
-      'Delete Profile',
-      `Delete "${profile.name}" and all their measurements?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete', style: 'destructive',
-          onPress: async () => {
-            await deleteProfile(profile.id);
-            setList((prev) => prev.filter((p) => p.id !== profile.id));
-          },
-        },
-      ],
-    );
-  }
 
   return (
     <View style={styles.container}>
       <FlatList
-        data={list}
-        keyExtractor={(p) => p.id}
+        data={cards}
+        keyExtractor={(c) => c.profile.id}
         contentContainerStyle={styles.list}
         ListEmptyComponent={
           <Text style={styles.empty}>No profiles yet. Tap + to create one.</Text>
         }
-        renderItem={({ item }) => (
+        renderItem={({ item: { profile, latest } }) => (
           <Pressable
-            style={styles.row}
-            onPress={() => router.push({ pathname: '/profile-timeline', params: { id: item.id } })}
+            style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+            onPress={() => router.push({ pathname: '/profile-timeline', params: { id: profile.id } })}
           >
-            <View style={styles.rowLeft}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{item.name.charAt(0).toUpperCase()}</Text>
-              </View>
-              <Text style={styles.name}>{item.name}</Text>
+            <View style={styles.avatar}>
+              {profile.profileImage ? (
+                <Image source={{ uri: profile.profileImage }} style={styles.avatarImg} />
+              ) : (
+                <Text style={styles.avatarText}>{profile.name.charAt(0).toUpperCase()}</Text>
+              )}
             </View>
-            <View style={styles.rowActions}>
-              <Pressable
-                onPress={() => router.push({ pathname: '/(tabs)/edit-profile', params: { id: item.id } })}
-                hitSlop={12}
-              >
-                <Ionicons name="create-outline" size={20} color="#A0AEC0" />
-              </Pressable>
-              <Pressable onPress={() => handleDelete(item)} hitSlop={12}>
-                <Ionicons name="trash-outline" size={20} color="#FC8181" />
-              </Pressable>
+
+            <View style={styles.info}>
+              <Text style={styles.name}>{profile.name}</Text>
+              {latest ? (
+                <Text style={styles.sub}>
+                  {formatMeasurement(latest, primaryUnit)}
+                  <Text style={styles.dot}> · </Text>
+                  {timeAgo(latest.measuredAt)}
+                </Text>
+              ) : (
+                <Text style={styles.subFaded}>No measurements yet</Text>
+              )}
             </View>
+
+            <Ionicons name="chevron-forward" size={18} color="#CBD5E0" />
           </Pressable>
         )}
       />
@@ -83,27 +105,36 @@ const styles = StyleSheet.create({
   list:      { padding: 16, paddingBottom: 100 },
   empty:     { textAlign: 'center', color: '#A0AEC0', marginTop: 60, fontSize: 15 },
 
-  row: {
+  card: {
+    flexDirection:   'row',
+    alignItems:      'center',
     backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    borderRadius:    16,
+    padding:         16,
+    marginBottom:    12,
+    gap:             14,
+    shadowColor:     '#000',
+    shadowOpacity:   0.05,
+    shadowRadius:    8,
+    elevation:       2,
   },
-  rowLeft:    { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  rowActions: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  cardPressed: { opacity: 0.85 },
+
   avatar: {
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: '#4A90D9', alignItems: 'center', justifyContent: 'center',
+    width: 56, height: 56, borderRadius: 28,
+    backgroundColor: '#4A90D9',
+    alignItems: 'center', justifyContent: 'center',
+    overflow: 'hidden',
   },
-  avatarText: { color: '#fff', fontWeight: '700', fontSize: 18 },
-  name: { fontSize: 16, fontWeight: '600', color: '#2D3748' },
+  avatarImg:  { width: 56, height: 56, borderRadius: 28 },
+  avatarText: { color: '#fff', fontWeight: '700', fontSize: 20 },
+
+  info:     { flex: 1 },
+  name:     { fontSize: 17, fontWeight: '700', color: '#1A202C', marginBottom: 4 },
+  sub:      { fontSize: 14, color: '#4A5568' },
+  subFaded: { fontSize: 14, color: '#A0AEC0' },
+  dot:      { color: '#CBD5E0' },
+
   fab: {
     position: 'absolute', bottom: 28, right: 24,
     width: 56, height: 56, borderRadius: 28,

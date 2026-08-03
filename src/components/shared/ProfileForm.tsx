@@ -1,29 +1,35 @@
 import { useState } from 'react';
 import {
-  View, Text, TextInput, Pressable, StyleSheet,
-  ScrollView, KeyboardAvoidingView, Platform,
+  View, Text, TextInput, Pressable, StyleSheet, Image,
+  ScrollView, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as ExpoCrypto from 'expo-crypto';
+import { Ionicons } from '@expo/vector-icons';
 import { Profile } from '../../db/schema';
 
 export type ProfileFormValues = {
-  name:        string;
-  avatar:      'baby' | 'child' | 'teenager' | 'adult';
-  theme:       'red' | 'blue' | 'green';
-  doorStyle:   'style_1' | 'style_2' | 'style_3';
-  doorColour:  'black' | 'brown' | 'red';
-  handleStyle: 'handle_style_1' | 'handle_style_2' | 'handle_style_3';
-  shelfItems:  'rocket_1' | 'flower_pot' | 'book';
+  name:         string;
+  avatar:       'baby' | 'child' | 'teenager' | 'adult';
+  theme:        'red' | 'blue' | 'green';
+  doorStyle:    'style_1' | 'style_2' | 'style_3';
+  doorColour:   'black' | 'brown' | 'red';
+  handleStyle:  'handle_style_1' | 'handle_style_2' | 'handle_style_3';
+  shelfItems:   'rocket_1' | 'flower_pot' | 'book';
+  profileImage: string | null;
 };
 
 function defaults(profile?: Profile): ProfileFormValues {
   return {
-    name:        profile?.name        ?? '',
-    avatar:      (profile?.avatar      as ProfileFormValues['avatar'])      ?? 'child',
-    theme:       (profile?.theme       as ProfileFormValues['theme'])       ?? 'red',
-    doorStyle:   (profile?.doorStyle   as ProfileFormValues['doorStyle'])   ?? 'style_1',
-    doorColour:  (profile?.doorColour  as ProfileFormValues['doorColour'])  ?? 'black',
-    handleStyle: (profile?.handleStyle as ProfileFormValues['handleStyle']) ?? 'handle_style_1',
-    shelfItems:  (profile?.shelfItems  as ProfileFormValues['shelfItems'])  ?? 'rocket_1',
+    name:         profile?.name        ?? '',
+    avatar:       (profile?.avatar      as ProfileFormValues['avatar'])      ?? 'child',
+    theme:        (profile?.theme       as ProfileFormValues['theme'])       ?? 'red',
+    doorStyle:    (profile?.doorStyle   as ProfileFormValues['doorStyle'])   ?? 'style_1',
+    doorColour:   (profile?.doorColour  as ProfileFormValues['doorColour'])  ?? 'black',
+    handleStyle:  (profile?.handleStyle as ProfileFormValues['handleStyle']) ?? 'handle_style_1',
+    shelfItems:   (profile?.shelfItems  as ProfileFormValues['shelfItems'])  ?? 'rocket_1',
+    profileImage: profile?.profileImage ?? null,
   };
 }
 
@@ -105,12 +111,60 @@ export function ProfileForm({ initial, onSave, onCancel, submitLabel, loading }:
     setValues((prev) => ({ ...prev, [key]: val }));
   }
 
+  async function handlePickImage() {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Permission needed', 'Allow access to your photo library to set a profile picture.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (result.canceled) return;
+
+    const uri  = result.assets[0].uri;
+    const dir  = FileSystem.documentDirectory + 'profiles/';
+    await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
+    const ext  = uri.split('.').pop() ?? 'jpg';
+    const dest = dir + ExpoCrypto.randomUUID() + '.' + ext;
+    await FileSystem.copyAsync({ from: uri, to: dest });
+    set('profileImage', dest);
+  }
+
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+
+        {/* ── Profile picture ── */}
+        <View style={styles.avatarSection}>
+          <Pressable style={styles.avatarRing} onPress={handlePickImage}>
+            {values.profileImage ? (
+              <Image source={{ uri: values.profileImage }} style={styles.avatarImage} />
+            ) : (
+              <View style={styles.avatarPlaceholder}>
+                <Ionicons name="person-outline" size={40} color="#A0AEC0" />
+              </View>
+            )}
+            <View style={styles.cameraOverlay}>
+              <Ionicons name="camera" size={14} color="#fff" />
+            </View>
+          </Pressable>
+          <Text style={styles.avatarHint}>
+            {values.profileImage ? 'Tap to change photo' : 'Add profile photo'}
+          </Text>
+          {values.profileImage && (
+            <Pressable onPress={() => set('profileImage', null)} style={styles.removeBtn}>
+              <Text style={styles.removeText}>Remove</Text>
+            </Pressable>
+          )}
+        </View>
+
         <Text style={styles.label}>Name</Text>
         <TextInput
           style={styles.input}
@@ -156,8 +210,30 @@ export function ProfileForm({ initial, onSave, onCancel, submitLabel, loading }:
 }
 
 const styles = StyleSheet.create({
-  scroll:           { flex: 1, backgroundColor: '#F7FAFC' },
-  content:          { padding: 20, paddingBottom: 48 },
+  scroll:   { flex: 1, backgroundColor: '#F7FAFC' },
+  content:  { padding: 20, paddingBottom: 48 },
+
+  // Profile picture
+  avatarSection:     { alignItems: 'center', paddingVertical: 24 },
+  avatarRing:        { position: 'relative', width: 96, height: 96 },
+  avatarImage:       { width: 96, height: 96, borderRadius: 48 },
+  avatarPlaceholder: {
+    width: 96, height: 96, borderRadius: 48,
+    backgroundColor: '#EDF2F7',
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: '#E2E8F0', borderStyle: 'dashed',
+  },
+  cameraOverlay: {
+    position: 'absolute', bottom: 0, right: 0,
+    width: 28, height: 28, borderRadius: 14,
+    backgroundColor: '#4A90D9',
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: '#F7FAFC',
+  },
+  avatarHint: { marginTop: 10, fontSize: 13, color: '#718096' },
+  removeBtn:  { marginTop: 6 },
+  removeText: { fontSize: 13, color: '#FC8181', fontWeight: '500' },
+
   label:            { fontSize: 13, fontWeight: '600', color: '#4A5568', marginBottom: 8, marginTop: 16 },
   input:            { backgroundColor: '#fff', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 10, padding: 13, fontSize: 16 },
   optionRow:        { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },

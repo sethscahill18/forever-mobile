@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 844">
+  <!-- Shelf bracket left -->
+  <rect x="278" y="158" width="5" height="28" rx="1" fill="#6B4C0F"/>
+  <!-- Shelf bracket right -->
+  <rect x="367" y="158" width="5" height="28" rx="1" fill="#6B4C0F"/>
+  <!-- Shelf plank -->
+  <rect x="273" y="154" width="104" height="10" rx="2" fill="#8B6914"/>
+  <!-- Shelf plank underside highlight -->
+  <rect x="273" y="162" width="104" height="2" fill="#6B4C0F" opacity="0.4"/>
+</svg>

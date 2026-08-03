@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 844">
+  <!-- Shelf item: rocket — sitting on shelf at y=154 -->
+  <!-- Rocket body -->
+  <polygon points="325,92 314,148 336,148" fill="#E53E3E"/>
+  <!-- Left fin -->
+  <polygon points="314,140 309,154 316,148" fill="#FC8181"/>
+  <!-- Right fin -->
+  <polygon points="336,140 341,154 334,148" fill="#FC8181"/>
+  <!-- Porthole -->
+  <circle cx="325" cy="126" r="6" fill="#BEE3F8" opacity="0.9"/>
+  <circle cx="325" cy="126" r="4" fill="#90CDF4"/>
+</svg>

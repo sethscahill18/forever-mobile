@@ -51,10 +51,11 @@ export async function initDatabase() {
       ON measurements(profile_id, is_milestone);
   `);
 
-  // Add milestone_image column to existing databases without requiring a reinstall
+  // Non-destructive column migrations — swallow "duplicate column" errors on fresh installs
   try {
     await sqlite.execAsync(`ALTER TABLE measurements ADD COLUMN milestone_image TEXT;`);
-  } catch (_) {
-    // Column already exists on fresh installs
-  }
+  } catch (_) {}
+  try {
+    await sqlite.execAsync(`ALTER TABLE profiles ADD COLUMN profile_image TEXT;`);
+  } catch (_) {}
 }

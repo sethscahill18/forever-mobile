@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 844">
+  <!-- Avatar: adult (~175 cm) — head top at y≈187 -->
+  <!-- Head -->
+  <circle cx="310" cy="210" r="23" fill="#4A5568"/>
+  <!-- Body -->
+  <rect x="292" y="231" width="36" height="489" rx="8" fill="#4A5568"/>
+</svg>

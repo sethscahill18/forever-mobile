@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 844">
+  <!-- Handle style 1: round door knob -->
+  <!-- Escutcheon plate -->
+  <rect x="243" y="404" width="8" height="32" rx="3" fill="#B8860B"/>
+  <!-- Knob outer -->
+  <circle cx="247" cy="420" r="12" fill="#DAA520"/>
+  <!-- Knob highlight -->
+  <circle cx="244" cy="416" r="4" fill="#F0D870" opacity="0.5"/>
+</svg>

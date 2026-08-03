@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 844">
+  <!-- Shelf item: flower pot — sitting on shelf at y=154 -->
+  <!-- Pot body (trapezoid) -->
+  <polygon points="315,154 319,124 341,124 345,154" fill="#C05621"/>
+  <!-- Pot rim -->
+  <rect x="313" y="120" width="34" height="7" rx="2" fill="#DD6B20"/>
+  <!-- Stem -->
+  <line x1="330" y1="120" x2="330" y2="97" stroke="#2F855A" stroke-width="3" stroke-linecap="round"/>
+  <!-- Petals -->
+  <circle cx="330" cy="88" r="13" fill="#F6AD55"/>
+  <!-- Flower centre -->
+  <circle cx="330" cy="88" r="6" fill="#F6E05E"/>
+</svg>

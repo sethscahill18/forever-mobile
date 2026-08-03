@@ -16,8 +16,9 @@ export const profiles = sqliteTable('profiles', {
   doorColour:  text('door_colour').notNull().default('black'),
   handleStyle: text('handle_style').notNull().default('handle_style_1'),
   shelfItems:  text('shelf_items').notNull().default('rocket_1'),
-  heightUnit:  text('height_unit').notNull().default('cm'),
-  createdAt:   integer('created_at').notNull(),
+  heightUnit:   text('height_unit').notNull().default('cm'),
+  profileImage: text('profile_image'),
+  createdAt:    integer('created_at').notNull(),
 });
 
 export const measurements = sqliteTable('measurements', {

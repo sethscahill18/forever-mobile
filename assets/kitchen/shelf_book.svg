@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 844">
+  <!-- Shelf item: book — sitting on shelf at y=154 -->
+  <!-- Book body (upright) -->
+  <rect x="313" y="112" width="22" height="42" rx="1" fill="#3182CE"/>
+  <!-- Spine -->
+  <rect x="313" y="112" width="5" height="42" fill="#2B6CB0"/>
+  <!-- Page edge lines -->
+  <line x1="322" y1="114" x2="334" y2="114" stroke="#63B3ED" stroke-width="1" opacity="0.5"/>
+  <line x1="322" y1="118" x2="334" y2="118" stroke="#63B3ED" stroke-width="1" opacity="0.5"/>
+  <!-- Base strip -->
+  <rect x="311" y="152" width="26" height="4" rx="1" fill="#2B6CB0"/>
+</svg>

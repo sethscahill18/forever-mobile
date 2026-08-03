@@ -2,7 +2,9 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, Pressable, ActivityIndicator,
   Animated, Alert, TextInput, Keyboard, ScrollView,
+  Modal, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
@@ -14,21 +16,16 @@ import { getProfiles } from '../../src/services/profile.service';
 import { Profile } from '../../src/db/schema';
 import { toCm, formatHeight } from '../../src/utils/weight';
 
-type Mode = 'idle' | 'chooser' | 'manual' | 'ble' | 'pick-profile';
+type Mode = 'hidden' | 'pick-profile';
 
-const PANEL_HEIGHTS: Record<Exclude<Mode, 'idle'>, number> = {
-  chooser:          190,
-  manual:           310,
-  ble:              260,
-  'pick-profile':   300,
-};
+const PANEL_HEIGHT_PICK_PROFILE = 300;
 
 type PendingMeasurement = {
   heightCm:   number;
   heightFt?:  number;
   heightIn?:  number;
   measuredAt: number;
-  returnMode: 'ble' | 'manual';
+  returnMode: 'hidden' | 'manual';
 };
 
 function formatDateLabel(d: Date): string {
@@ -40,13 +37,12 @@ export default function MeasurementsScreen() {
   const unit   = useSettingsStore((s) => s.primaryUnit);
 
   const { status, valueCm, saveRequestedCm, clearSaveRequest, error, startScan, disconnect } = useBLEMeasure();
-  const bleConnected = status === 'connected';
-  const bleScanning  = status === 'scanning' || status === 'connecting';
 
-  const [mode,        setMode]        = useState<Mode>('idle');
-  const [saved,       setSaved]       = useState(false);
-  const [profileList, setProfileList] = useState<Profile[]>([]);
-  const [pending,     setPending]     = useState<PendingMeasurement | null>(null);
+  const [mode,               setMode]               = useState<Mode>('hidden');
+  const [saved,              setSaved]              = useState(false);
+  const [profileList,        setProfileList]        = useState<Profile[]>([]);
+  const [pending,            setPending]            = useState<PendingMeasurement | null>(null);
+  const [manualModalVisible, setManualModalVisible] = useState(false);
 
   const panelAnim    = useRef(new Animated.Value(0)).current;
   const keyboardAnim = useRef(new Animated.Value(0)).current;
@@ -58,14 +54,20 @@ export default function MeasurementsScreen() {
   const [manualDate,     setManualDate]     = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  // Refresh profile list whenever the screen is focused
+  // Load profiles and auto-start BLE scan whenever the tab is focused
   useFocusEffect(
     useCallback(() => {
       if (userId) getProfiles(userId).then(setProfileList);
+      startScan();
+      return () => {
+        disconnect();
+        setMode('hidden');
+        setManualModalVisible(false);
+      };
     }, [userId]),
   );
 
-  // Lift panel above keyboard
+  // Lift pick-profile panel above keyboard (precautionary)
   useEffect(() => {
     const show = Keyboard.addListener('keyboardWillShow', (e) => {
       Animated.timing(keyboardAnim, {
@@ -84,53 +86,44 @@ export default function MeasurementsScreen() {
     return () => { show.remove(); hide.remove(); };
   }, []);
 
-  // Sync BLE connection state into mode
+  // Animate pick-profile panel
   useEffect(() => {
-    if (bleConnected && mode !== 'ble') setMode('ble');
-    if (!bleConnected && mode === 'ble') setMode('idle');
-  }, [bleConnected]);
-
-  // Animate panel height
-  useEffect(() => {
-    const targetHeight = mode === 'idle' ? 0 : PANEL_HEIGHTS[mode as Exclude<Mode, 'idle'>];
     Animated.spring(panelAnim, {
-      toValue: targetHeight,
+      toValue: mode === 'pick-profile' ? PANEL_HEIGHT_PICK_PROFILE : 0,
       useNativeDriver: false,
       bounciness: 4,
     }).start();
   }, [mode]);
 
-  // Surface BLE errors
-  useEffect(() => {
-    if (error) {
-      Alert.alert('Bluetooth error', error);
-      setMode('idle');
-    }
-  }, [error]);
-
-  // Physical save button on device: "SAVE,17.5" → trigger profile picker, same as tapping Save on screen
+  // Physical save button on device: "SAVE,17.5" → trigger profile picker
   useEffect(() => {
     if (saveRequestedCm == null) return;
-    Alert.alert('Save received', `Device sent SAVE with value: ${saveRequestedCm} cm (mode: ${mode})`);
-    if (mode !== 'ble') return;
-    setPending({ heightCm: saveRequestedCm, measuredAt: Date.now(), returnMode: 'ble' });
+    if (status !== 'connected') return;
+    setPending({ heightCm: saveRequestedCm, measuredAt: Date.now(), returnMode: 'hidden' });
     setMode('pick-profile');
     clearSaveRequest();
   }, [saveRequestedCm]);
 
-  function flashSaved() {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  }
-
   // BLE: capture current reading and proceed to profile selection
   function handleBleRequest() {
     if (valueCm === null) return;
-    setPending({ heightCm: valueCm, measuredAt: Date.now(), returnMode: 'ble' });
+    setPending({ heightCm: valueCm, measuredAt: Date.now(), returnMode: 'hidden' });
     setMode('pick-profile');
   }
 
-  // Manual: validate entry and proceed to profile selection
+  // Manual: open modal, stopping any BLE scan in progress
+  function openManual() {
+    disconnect();
+    setManualDate(new Date());
+    setManualModalVisible(true);
+  }
+
+  function closeManualModal() {
+    Keyboard.dismiss();
+    setManualModalVisible(false);
+  }
+
+  // Manual: validate entry, close modal, and proceed to profile selection
   function handleManualRequest() {
     Keyboard.dismiss();
     let heightCm: number;
@@ -156,6 +149,7 @@ export default function MeasurementsScreen() {
       heightIn = inches;
     }
 
+    setManualModalVisible(false);
     setPending({ heightCm, heightFt, heightIn, measuredAt: manualDate.getTime(), returnMode: 'manual' });
     setMode('pick-profile');
   }
@@ -183,13 +177,14 @@ export default function MeasurementsScreen() {
               setSaved(true);
               setTimeout(() => {
                 setSaved(false);
+                setMode('hidden');
                 if (returnMode === 'manual') {
                   setManualCm('');
                   setManualFt('');
                   setManualIn('');
                   setManualDate(new Date());
+                  startScan(); // restart BLE scan after manual save
                 }
-                setMode(returnMode);
               }, 1200);
             } catch (e) {
               Alert.alert('Save failed', e instanceof Error ? e.message : String(e));
@@ -200,34 +195,19 @@ export default function MeasurementsScreen() {
     );
   }
 
-  function handleFAB() {
-    if (bleScanning || mode !== 'idle') return;
-    setMode('chooser');
-  }
-
-  function chooseDevice() {
-    setMode('ble');
-    startScan();
-  }
-
-  function chooseManual() {
-    setMode('manual');
-    setManualDate(new Date());
-  }
-
   function closePanel() {
-    Keyboard.dismiss();
-    if (mode === 'ble') disconnect();
     setPending(null);
-    setMode('idle');
+    setMode('hidden');
   }
 
   function backFromPickProfile() {
-    setMode(pending?.returnMode ?? 'idle');
+    setMode('hidden');
+    if (pending?.returnMode === 'manual') {
+      setManualModalVisible(true); // return to manual entry modal
+    }
   }
 
   const hasProfiles = profileList.length > 0;
-  const showFAB     = mode === 'idle' && !bleScanning;
 
   return (
     <View style={styles.screen}>
@@ -243,153 +223,75 @@ export default function MeasurementsScreen() {
               <Text style={styles.noProfileBtnText}>Go to Profiles</Text>
             </Pressable>
           </View>
-        ) : bleScanning ? (
-          <View style={styles.fabRing}>
-            <View style={styles.fabCircle}>
-              <ActivityIndicator color="#fff" size="large" />
-            </View>
-          </View>
-        ) : showFAB ? (
-          <View style={styles.fabWrapper}>
-            <View style={styles.fabRing}>
-              <Pressable style={styles.fabCircle} onPress={handleFAB} accessibilityLabel="Add measurement">
-                <Ionicons name="add" size={72} color="#fff" />
-              </Pressable>
-            </View>
-            <Text style={styles.fabLabel}>Add Measurement</Text>
-          </View>
-        ) : null}
-      </Pressable>
-
-      <Animated.View
-        style={[styles.panel, { height: panelAnim, bottom: keyboardAnim }]}
-        pointerEvents={mode === 'idle' ? 'none' : 'auto'}
-      >
-
-        {/* ── Chooser ── */}
-        {mode === 'chooser' && (
-          <View style={styles.panelInner}>
-            <Text style={styles.panelTitle}>Add Measurement</Text>
-            <Pressable style={styles.choiceRow} onPress={chooseDevice}>
-              <View style={styles.choiceIcon}>
-                <Ionicons name="bluetooth-outline" size={22} color="#2B6CB0" />
-              </View>
-              <View>
-                <Text style={styles.choiceLabel}>Connect to Device</Text>
-                <Text style={styles.choiceDesc}>Take a live reading</Text>
-              </View>
-            </Pressable>
-            <View style={styles.divider} />
-            <Pressable style={styles.choiceRow} onPress={chooseManual}>
-              <View style={styles.choiceIcon}>
-                <Ionicons name="create-outline" size={22} color="#2B6CB0" />
-              </View>
-              <View>
-                <Text style={styles.choiceLabel}>Enter Manually</Text>
-                <Text style={styles.choiceDesc}>Add a historical reading</Text>
-              </View>
-            </Pressable>
-            <Pressable style={styles.cancelBtn} onPress={closePanel}>
-              <Text style={styles.cancelText}>Cancel</Text>
-            </Pressable>
-          </View>
-        )}
-
-        {/* ── BLE connected ── */}
-        {mode === 'ble' && (
-          <View style={styles.panelInner}>
-            <View style={styles.panelHeader}>
-              <Text style={styles.deviceName}>ForeverMeasure</Text>
-              <View style={styles.connectedRow}>
-                <View style={styles.dot} />
-                <Text style={styles.connectedText}>Connected</Text>
-              </View>
-            </View>
-            <View style={styles.readingBlock}>
-              <Text style={styles.readingPrimary}>
-                {valueCm !== null ? formatHeight(valueCm, unit) : '—'}
-              </Text>
-              <Text style={styles.readingSecondary}>
-                {valueCm !== null ? formatHeight(valueCm, unit === 'cm' ? 'ft' : 'cm') : '—'}
-              </Text>
-            </View>
-            {saved && <Text style={styles.savedBanner}>Saved!</Text>}
-            <View style={styles.panelActions}>
-              <Pressable style={styles.btnSecondary} onPress={closePanel}>
-                <Text style={styles.btnSecondaryText}>Disconnect</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.btnPrimary, valueCm === null && styles.btnDisabled]}
-                onPress={handleBleRequest}
-                disabled={valueCm === null}
-              >
-                <Text style={styles.btnPrimaryText}>Save</Text>
-              </Pressable>
-            </View>
-          </View>
-        )}
-
-        {/* ── Manual entry ── */}
-        {mode === 'manual' && (
-          <View style={styles.panelInner}>
-            <View style={styles.panelHeader}>
-              <Text style={styles.panelTitle}>Manual Entry</Text>
-              <Pressable onPress={closePanel} hitSlop={10}>
-                <Ionicons name="close" size={22} color="#718096" />
-              </Pressable>
+        ) : (
+          <>
+            {/* Center: BLE status display */}
+            <View style={styles.bleContent}>
+              {(status === 'scanning' || status === 'connecting') && (
+                <>
+                  <ActivityIndicator size="large" color="#4A90D9" />
+                  <Text style={styles.scanLabel}>
+                    {status === 'scanning' ? 'Searching for ForeverMeasure…' : 'Connecting…'}
+                  </Text>
+                </>
+              )}
+              {status === 'connected' && (
+                <>
+                  <View style={styles.connectedHeader}>
+                    <View style={styles.dot} />
+                    <Text style={styles.deviceName}>ForeverMeasure</Text>
+                  </View>
+                  <Text style={styles.readingPrimary}>
+                    {valueCm !== null ? formatHeight(valueCm, unit) : '—'}
+                  </Text>
+                  <Text style={styles.readingSecondary}>
+                    {valueCm !== null ? formatHeight(valueCm, unit === 'cm' ? 'ft' : 'cm') : '—'}
+                  </Text>
+                </>
+              )}
+              {(status === 'error' || status === 'idle') && (
+                <>
+                  <Ionicons name="bluetooth-outline" size={48} color="#FC8181" />
+                  {status === 'error' && <Text style={styles.errorText}>{error}</Text>}
+                  <Pressable style={styles.retryBtn} onPress={startScan}>
+                    <Text style={styles.retryText}>Retry</Text>
+                  </Pressable>
+                </>
+              )}
+              {saved && <Text style={styles.savedBanner}>Saved!</Text>}
             </View>
 
-            <Text style={styles.fieldLabel}>Height</Text>
-            {unit === 'cm' ? (
-              <View style={styles.inputRow}>
-                <TextInput
-                  style={[styles.input, styles.inputFlex]}
-                  placeholder="e.g. 17.5"
-                  keyboardType="decimal-pad"
-                  value={manualCm}
-                  onChangeText={setManualCm}
-                />
-                <Text style={styles.unitLabel}>cm</Text>
-              </View>
-            ) : (
-              <View style={styles.inputRow}>
-                <TextInput
-                  style={[styles.input, styles.inputSmall]}
-                  placeholder="0"
-                  keyboardType="number-pad"
-                  value={manualFt}
-                  onChangeText={setManualFt}
-                />
-                <Text style={styles.unitLabel}>ft</Text>
-                <TextInput
-                  style={[styles.input, styles.inputSmall]}
-                  placeholder="0"
-                  keyboardType="decimal-pad"
-                  value={manualIn}
-                  onChangeText={setManualIn}
-                />
-                <Text style={styles.unitLabel}>in</Text>
+            {/* Bottom actions — hidden while pick-profile panel is open */}
+            {mode === 'hidden' && (
+              <View style={styles.bottomActions}>
+                {status === 'connected' && (
+                  <Pressable
+                    style={[styles.btnPrimary, valueCm === null && styles.btnDisabled]}
+                    onPress={handleBleRequest}
+                    disabled={valueCm === null}
+                  >
+                    <Text style={styles.btnPrimaryText}>Save Measurement</Text>
+                  </Pressable>
+                )}
+                <Pressable style={styles.btnSecondary} onPress={openManual}>
+                  <Text style={styles.btnSecondaryText}>Enter manually</Text>
+                </Pressable>
+                {status === 'connected' && (
+                  <Pressable style={styles.disconnectLink} onPress={disconnect}>
+                    <Text style={styles.disconnectText}>Disconnect</Text>
+                  </Pressable>
+                )}
               </View>
             )}
-
-            <Text style={styles.fieldLabel}>Date</Text>
-            <Pressable style={styles.dateBtn} onPress={() => { Keyboard.dismiss(); setShowDatePicker(true); }}>
-              <Text style={styles.dateBtnText}>{formatDateLabel(manualDate)}</Text>
-              <Ionicons name="chevron-forward" size={16} color="#718096" />
-            </Pressable>
-
-            <View style={styles.panelActions}>
-              <Pressable style={styles.btnSecondary} onPress={closePanel}>
-                <Text style={styles.btnSecondaryText}>Cancel</Text>
-              </Pressable>
-              <Pressable style={styles.btnPrimary} onPress={handleManualRequest}>
-                <Text style={styles.btnPrimaryText}>Next</Text>
-              </Pressable>
-            </View>
-          </View>
+          </>
         )}
+      </Pressable>
 
-        {/* ── Profile picker ── */}
+      {/* ── Profile picker panel ── */}
+      <Animated.View
+        style={[styles.panel, { height: panelAnim, bottom: keyboardAnim }]}
+        pointerEvents={mode === 'hidden' ? 'none' : 'auto'}
+      >
         {mode === 'pick-profile' && (
           <View style={styles.panelInner}>
             <View style={styles.panelHeader}>
@@ -397,7 +299,7 @@ export default function MeasurementsScreen() {
                 <Ionicons name="chevron-back" size={20} color="#2B6CB0" />
                 <Text style={styles.backText}>Back</Text>
               </Pressable>
-              <Text style={styles.panelTitle2}>Select Profile</Text>
+              <Text style={styles.panelTitle}>Select Profile</Text>
               <Pressable onPress={closePanel} hitSlop={10}>
                 <Ionicons name="close" size={22} color="#718096" />
               </Pressable>
@@ -422,47 +324,126 @@ export default function MeasurementsScreen() {
         )}
       </Animated.View>
 
-      <DateTimePickerModal
-        isVisible={showDatePicker}
-        mode="date"
-        date={manualDate}
-        maximumDate={new Date()}
-        onConfirm={(d) => { setManualDate(d); setShowDatePicker(false); }}
-        onCancel={() => setShowDatePicker(false)}
-      />
+      {/* ── Manual entry modal ── */}
+      <Modal
+        visible={manualModalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={closeManualModal}
+      >
+        <SafeAreaView style={styles.modalSafe}>
+          <KeyboardAvoidingView
+            style={styles.modalFlex}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          >
+            <View style={styles.modalInner}>
+              {/* Header */}
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Manual Entry</Text>
+                <Pressable onPress={closeManualModal} hitSlop={10}>
+                  <Ionicons name="close" size={24} color="#718096" />
+                </Pressable>
+              </View>
+
+              <Text style={styles.fieldLabel}>Height</Text>
+              {unit === 'cm' ? (
+                <View style={styles.inputRow}>
+                  <TextInput
+                    style={[styles.input, styles.inputFlex]}
+                    placeholder="e.g. 120.5"
+                    keyboardType="decimal-pad"
+                    value={manualCm}
+                    onChangeText={setManualCm}
+                  />
+                  <Text style={styles.unitLabel}>cm</Text>
+                </View>
+              ) : (
+                <View style={styles.inputRow}>
+                  <TextInput
+                    style={[styles.input, styles.inputSmall]}
+                    placeholder="0"
+                    keyboardType="number-pad"
+                    value={manualFt}
+                    onChangeText={setManualFt}
+                  />
+                  <Text style={styles.unitLabel}>ft</Text>
+                  <TextInput
+                    style={[styles.input, styles.inputSmall]}
+                    placeholder="0"
+                    keyboardType="decimal-pad"
+                    value={manualIn}
+                    onChangeText={setManualIn}
+                  />
+                  <Text style={styles.unitLabel}>in</Text>
+                </View>
+              )}
+
+              <Text style={styles.fieldLabel}>Date</Text>
+              <Pressable
+                style={styles.dateBtn}
+                onPress={() => { Keyboard.dismiss(); setShowDatePicker(true); }}
+              >
+                <Text style={styles.dateBtnText}>{formatDateLabel(manualDate)}</Text>
+                <Ionicons name="chevron-forward" size={16} color="#718096" />
+              </Pressable>
+
+              <View style={styles.modalActions}>
+                <Pressable style={styles.btnSecondaryFlex} onPress={closeManualModal}>
+                  <Text style={styles.btnSecondaryText}>Cancel</Text>
+                </Pressable>
+                <Pressable style={styles.btnPrimaryFlex} onPress={handleManualRequest}>
+                  <Text style={styles.btnPrimaryText}>Next</Text>
+                </Pressable>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+
+        <DateTimePickerModal
+          isVisible={showDatePicker}
+          mode="date"
+          date={manualDate}
+          maximumDate={new Date()}
+          onConfirm={(d) => { setManualDate(d); setShowDatePicker(false); }}
+          onCancel={() => setShowDatePicker(false)}
+        />
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#F7FAFC' },
-  body:   { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  body:   { flex: 1 },
 
-  noProfileBox:     { alignItems: 'center', paddingHorizontal: 40, gap: 12 },
+  noProfileBox:     { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, gap: 12 },
   noProfileTitle:   { fontSize: 18, fontWeight: '700', color: '#2D3748', textAlign: 'center' },
   noProfileDesc:    { fontSize: 14, color: '#718096', textAlign: 'center', lineHeight: 20 },
   noProfileBtn:     { marginTop: 8, backgroundColor: '#4A90D9', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10 },
   noProfileBtnText: { color: '#fff', fontWeight: '600', fontSize: 15 },
 
-  fabWrapper: { alignItems: 'center', gap: 20 },
-  fabRing: {
-    width: 176, height: 176, borderRadius: 88,
-    borderWidth: 2, borderColor: 'rgba(74, 144, 217, 0.35)',
-    alignItems: 'center', justifyContent: 'center',
+  // BLE status display
+  bleContent: {
+    flex: 1, alignItems: 'center', justifyContent: 'center',
+    gap: 16, paddingHorizontal: 32,
   },
-  fabCircle: {
-    width: 156, height: 156, borderRadius: 78,
-    backgroundColor: '#2B6CB0',
-    alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#2B6CB0',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.5, shadowRadius: 20, elevation: 14,
-  },
-  fabLabel: {
-    fontSize: 17, fontWeight: '600',
-    color: '#4A90D9', letterSpacing: 0.3,
-  },
+  connectedHeader:  { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  scanLabel:        { fontSize: 16, color: '#4A90D9', fontWeight: '500', textAlign: 'center' },
+  errorText:        { fontSize: 14, color: '#E53E3E', textAlign: 'center', lineHeight: 20 },
+  retryBtn:         { paddingHorizontal: 24, paddingVertical: 10, borderRadius: 10, borderWidth: 1.5, borderColor: '#4A90D9' },
+  retryText:        { color: '#4A90D9', fontWeight: '600', fontSize: 15 },
+  deviceName:       { fontSize: 16, fontWeight: '600', color: '#2D3748' },
+  dot:              { width: 8, height: 8, borderRadius: 4, backgroundColor: '#48BB78' },
+  readingPrimary:   { fontSize: 48, fontWeight: '700', color: '#2B6CB0', textAlign: 'center' },
+  readingSecondary: { fontSize: 18, fontWeight: '500', color: '#A0AEC0', textAlign: 'center' },
+  savedBanner:      { textAlign: 'center', color: '#48BB78', fontWeight: '600' },
 
+  // Bottom actions
+  bottomActions:  { paddingHorizontal: 24, paddingBottom: 40, gap: 12 },
+  disconnectLink: { alignItems: 'center', paddingVertical: 8 },
+  disconnectText: { color: '#A0AEC0', fontSize: 14 },
+
+  // Pick-profile panel
   panel: {
     position: 'absolute', left: 0, right: 0,
     backgroundColor: '#fff',
@@ -471,70 +452,50 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: -3 },
     shadowOpacity: 0.1, shadowRadius: 8, elevation: 12,
   },
-  panelInner: {
-    flex: 1, paddingHorizontal: 24, paddingTop: 20, paddingBottom: 20,
+  panelInner:  { flex: 1, paddingHorizontal: 24, paddingTop: 20, paddingBottom: 20 },
+  panelTitle:  { fontSize: 17, fontWeight: '700', color: '#1A202C' },
+  panelHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  backBtn:     { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  backText:    { color: '#2B6CB0', fontSize: 15, fontWeight: '500' },
+  profileScroll:  { flex: 1, marginTop: 4 },
+  profilePickRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#EDF2F7',
   },
-  panelTitle:  { fontSize: 17, fontWeight: '700', color: '#1A202C', marginBottom: 16 },
-  panelTitle2: { fontSize: 17, fontWeight: '700', color: '#1A202C' },
-  panelHeader: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', marginBottom: 12,
-  },
+  pickAvatar:     { width: 38, height: 38, borderRadius: 19, backgroundColor: '#4A90D9', alignItems: 'center', justifyContent: 'center' },
+  pickAvatarText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  pickName:       { flex: 1, fontSize: 15, fontWeight: '500', color: '#2D3748' },
 
-  choiceRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 10 },
-  choiceIcon: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: '#EBF4FF', alignItems: 'center', justifyContent: 'center',
-  },
-  choiceLabel: { fontSize: 15, fontWeight: '600', color: '#2D3748' },
-  choiceDesc:  { fontSize: 12, color: '#A0AEC0', marginTop: 1 },
-  divider:     { height: 1, backgroundColor: '#EDF2F7', marginVertical: 4 },
-  cancelBtn:   { marginTop: 12, alignItems: 'center', paddingVertical: 10 },
-  cancelText:  { color: '#718096', fontWeight: '500', fontSize: 15 },
+  // Manual entry modal
+  modalSafe:    { flex: 1, backgroundColor: '#F7FAFC' },
+  modalFlex:    { flex: 1 },
+  modalInner:   { flex: 1, paddingHorizontal: 24, paddingTop: 24, paddingBottom: 32 },
+  modalHeader:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  modalTitle:   { fontSize: 20, fontWeight: '700', color: '#1A202C' },
+  modalActions: { flexDirection: 'row', gap: 12, marginTop: 'auto', paddingTop: 16 },
 
-  deviceName:    { fontSize: 16, fontWeight: '600', color: '#2D3748' },
-  connectedRow:  { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  dot:           { width: 8, height: 8, borderRadius: 4, backgroundColor: '#48BB78' },
-  connectedText: { fontSize: 13, color: '#48BB78', fontWeight: '500' },
-  readingBlock:    { alignItems: 'center', marginVertical: 8 },
-  readingPrimary:  { fontSize: 48, fontWeight: '700', color: '#2B6CB0', textAlign: 'center' },
-  readingSecondary: { fontSize: 18, fontWeight: '500', color: '#A0AEC0', textAlign: 'center', marginTop: 2 },
-  savedBanner: { textAlign: 'center', color: '#48BB78', fontWeight: '600', marginBottom: 4 },
-
-  fieldLabel: { fontSize: 13, fontWeight: '600', color: '#4A5568', marginBottom: 6, marginTop: 12 },
+  // Shared form styles
+  fieldLabel: { fontSize: 13, fontWeight: '600', color: '#4A5568', marginBottom: 6, marginTop: 20 },
   inputRow:   { flexDirection: 'row', alignItems: 'center', gap: 8 },
   input: {
-    backgroundColor: '#F7FAFC', borderWidth: 1, borderColor: '#E2E8F0',
-    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16,
+    backgroundColor: '#fff', borderWidth: 1, borderColor: '#E2E8F0',
+    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 12, fontSize: 16,
   },
   inputFlex:  { flex: 1 },
   inputSmall: { width: 70 },
   unitLabel:  { fontSize: 15, color: '#4A5568', fontWeight: '500' },
   dateBtn: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    backgroundColor: '#F7FAFC', borderWidth: 1, borderColor: '#E2E8F0',
+    backgroundColor: '#fff', borderWidth: 1, borderColor: '#E2E8F0',
     borderRadius: 10, paddingHorizontal: 12, paddingVertical: 12,
   },
   dateBtnText: { fontSize: 15, color: '#2D3748' },
 
-  panelActions:     { flexDirection: 'row', gap: 12, marginTop: 'auto', paddingTop: 12 },
-  btnSecondary:     { flex: 1, height: 44, borderRadius: 10, borderWidth: 1.5, borderColor: '#CBD5E0', alignItems: 'center', justifyContent: 'center' },
+  btnSecondary:     { height: 52, borderRadius: 12, borderWidth: 1.5, borderColor: '#CBD5E0', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
+  btnSecondaryFlex: { flex: 1, height: 52, borderRadius: 12, borderWidth: 1.5, borderColor: '#CBD5E0', alignItems: 'center', justifyContent: 'center' },
   btnSecondaryText: { fontSize: 15, color: '#4A5568', fontWeight: '500' },
-  btnPrimary:       { flex: 1, height: 44, borderRadius: 10, backgroundColor: '#2B6CB0', alignItems: 'center', justifyContent: 'center' },
-  btnPrimaryText:   { fontSize: 15, color: '#fff', fontWeight: '600' },
+  btnPrimary:       { height: 52, borderRadius: 12, backgroundColor: '#2B6CB0', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
+  btnPrimaryFlex:   { flex: 1, height: 52, borderRadius: 12, backgroundColor: '#2B6CB0', alignItems: 'center', justifyContent: 'center' },
+  btnPrimaryText:   { fontSize: 16, color: '#fff', fontWeight: '600' },
   btnDisabled:      { opacity: 0.4 },
-
-  backBtn:        { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  backText:       { color: '#2B6CB0', fontSize: 15, fontWeight: '500' },
-  profileScroll:  { flex: 1, marginTop: 4 },
-  profilePickRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#EDF2F7',
-  },
-  pickAvatar: {
-    width: 38, height: 38, borderRadius: 19,
-    backgroundColor: '#4A90D9', alignItems: 'center', justifyContent: 'center',
-  },
-  pickAvatarText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  pickName:       { flex: 1, fontSize: 15, fontWeight: '500', color: '#2D3748' },
 });

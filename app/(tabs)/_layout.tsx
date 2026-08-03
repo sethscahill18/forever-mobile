@@ -22,20 +22,20 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="measurements"
-        options={{
-          title: 'Measurements',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="bar-chart-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="profiles"
         options={{
           title: 'Profiles',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="people-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="measurements"
+        options={{
+          title: 'Add',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="add-circle-outline" size={size} color={color} />
           ),
         }}
       />
@@ -57,7 +57,7 @@ export default function TabLayout() {
           ),
         }}
       />
-      <Tabs.Screen name="create-profile" options={{ href: null }} />
+      <Tabs.Screen name="create-profile" options={{ href: null, title: 'Create a Profile' }} />
       <Tabs.Screen name="edit-profile"   options={{ href: null }} />
     </Tabs>
   );

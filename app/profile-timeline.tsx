@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Dimensions, Pressable } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
+import KitchenScene from '../src/components/kitchen/KitchenScene';
 import { Stack, useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -15,6 +16,7 @@ import { profiles, Profile, Measurement } from '../src/db/schema';
 import { getMeasurements } from '../src/services/measurement.service';
 import { useSettingsStore } from '../src/store/settings.store';
 import { formatHeight, toGraphValue } from '../src/utils/weight';
+import { Ionicons } from '@expo/vector-icons';
 
 // ─── Chart constants ──────────────────────────────────────────────────────────
 const SVG_H  = 280;
@@ -54,6 +56,16 @@ function formatMeasurement(m: Measurement, unit: 'cm' | 'ft') {
   if (unit === 'ft' && m.heightFt != null && m.heightIn != null)
     return `${m.heightFt} ft ${m.heightIn} in`;
   return formatHeight(m.heightCm, unit);
+}
+
+function formatDelta(deltaCm: number, unit: 'cm' | 'ft'): string {
+  const sign = deltaCm >= 0 ? '+' : '−';
+  if (unit === 'cm') {
+    const val = Math.abs(Math.round(deltaCm * 10) / 10);
+    return `${sign}${val} cm`;
+  }
+  const totalIn = Math.round(Math.abs(deltaCm / 2.54) * 10) / 10;
+  return `${sign}${totalIn} in`;
 }
 
 // ─── Height chart ─────────────────────────────────────────────────────────────
@@ -332,6 +344,15 @@ export default function ProfileKitchenScreen() {
           headerStyle:      { backgroundColor: '#fff' },
           headerTitleStyle: { fontWeight: '700', color: '#1A202C' },
           headerTintColor:  '#4A90D9',
+          headerRight: () => (
+            <Pressable
+              onPress={() => router.push({ pathname: '/edit-profile', params: { id } })}
+              hitSlop={12}
+              style={{ paddingRight: 4 }}
+            >
+              <Ionicons name="create-outline" size={22} color="#4A90D9" />
+            </Pressable>
+          ),
         }}
       />
 
@@ -339,11 +360,10 @@ export default function ProfileKitchenScreen() {
         style={styles.container}
         onLayout={(e) => onContainerLayout(e.nativeEvent.layout.height)}
       >
-        {/* ── Kitchen scene placeholder ── */}
-        <View style={styles.kitchen}>
-          <View style={styles.kitchenBox} />
-          <View style={[styles.kitchenBox, styles.kitchenBoxSmall]} />
-        </View>
+        {/* ── Kitchen scene ── */}
+        {profile && (
+          <KitchenScene profile={profile} measurements={measurements} />
+        )}
 
         {/* ── Bottom sheet ── */}
         <Animated.View style={[styles.sheet, sheetStyle]}>
@@ -355,9 +375,20 @@ export default function ProfileKitchenScreen() {
               <View style={styles.latestRow}>
                 {latest ? (
                   <>
-                    <Text style={styles.latestHeight}>
-                      {formatMeasurement(latest, primaryUnit)}
-                    </Text>
+                    <View style={styles.latestHeightRow}>
+                      <Text style={styles.latestHeight}>
+                        {formatMeasurement(latest, primaryUnit)}
+                      </Text>
+                      {measurements.length >= 2 && (() => {
+                        const delta = latest.heightCm - measurements[1].heightCm;
+                        const positive = delta >= 0;
+                        return (
+                          <Text style={[styles.deltaBadge, positive ? styles.deltaPositive : styles.deltaNegative]}>
+                            {formatDelta(delta, primaryUnit)}
+                          </Text>
+                        );
+                      })()}
+                    </View>
                     <Text style={styles.latestDate}>
                       {shortDate(latest.measuredAt)}
                     </Text>
@@ -428,25 +459,6 @@ const styles = StyleSheet.create({
   screen:    { flex: 1, backgroundColor: '#E8F4FD' },
   container: { flex: 1 },
 
-  // Kitchen scene
-  kitchen: {
-    position: 'absolute',
-    top: 0, bottom: 0, left: 0, right: 0,
-    padding: 24,
-    gap: 16,
-    justifyContent: 'center',
-    backgroundColor: '#E8F4FD',
-  },
-  kitchenBox: {
-    height: 160,
-    borderRadius: 16,
-    backgroundColor: '#C9DFF5',
-    borderWidth: 2,
-    borderColor: '#B0CCEB',
-    borderStyle: 'dashed',
-  },
-  kitchenBoxSmall: { height: 90 },
-
   // Bottom sheet
   sheet: {
     position:             'absolute',
@@ -466,10 +478,14 @@ const styles = StyleSheet.create({
   // Handle + collapsed content
   handleArea:    { alignItems: 'center', paddingTop: 10, paddingBottom: 16, paddingHorizontal: 20 },
   handlePill:    { width: 40, height: 4, borderRadius: 2, backgroundColor: '#CBD5E0', marginBottom: 14 },
-  latestRow:     { alignItems: 'center', gap: 4 },
-  latestHeight:  { fontSize: 30, fontWeight: '700', color: '#2D3748' },
-  latestDate:    { fontSize: 14, color: '#718096' },
-  latestNone:    { fontSize: 15, color: '#A0AEC0' },
+  latestRow:        { alignItems: 'center', gap: 4 },
+  latestHeightRow:  { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  latestHeight:     { fontSize: 30, fontWeight: '700', color: '#2D3748' },
+  latestDate:       { fontSize: 14, color: '#718096' },
+  latestNone:       { fontSize: 15, color: '#A0AEC0' },
+  deltaBadge:       { fontSize: 13, fontWeight: '600', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8 },
+  deltaPositive:    { color: '#276749', backgroundColor: '#C6F6D5' },
+  deltaNegative:    { color: '#9B2C2C', backgroundColor: '#FED7D7' },
 
   // Scroll content
   scrollContent:    { paddingHorizontal: 20, paddingTop: 4 },
