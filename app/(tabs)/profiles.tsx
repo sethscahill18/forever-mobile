@@ -8,6 +8,8 @@ import { getMeasurements } from '../../src/services/measurement.service';
 import { Profile, Measurement } from '../../src/db/schema';
 import { Ionicons } from '@expo/vector-icons';
 import { formatHeight } from '../../src/utils/weight';
+import { AvatarDisplay } from '../../src/components/avatar/AvatarDisplay';
+import { buildAvatarConfig } from '../../src/components/avatar/types';
 
 type ProfileCard = { profile: Profile; latest: Measurement | null };
 
@@ -68,7 +70,7 @@ export default function ProfilesScreen() {
               {profile.profileImage ? (
                 <Image source={{ uri: profile.profileImage }} style={styles.avatarImg} />
               ) : (
-                <Text style={styles.avatarText}>{profile.name.charAt(0).toUpperCase()}</Text>
+                <AvatarDisplay config={buildAvatarConfig(profile)} size={56} compact />
               )}
             </View>
 
@@ -122,12 +124,11 @@ const styles = StyleSheet.create({
 
   avatar: {
     width: 56, height: 56, borderRadius: 28,
-    backgroundColor: '#4A90D9',
+    backgroundColor: '#EDF2F7',
     alignItems: 'center', justifyContent: 'center',
     overflow: 'hidden',
   },
-  avatarImg:  { width: 56, height: 56, borderRadius: 28 },
-  avatarText: { color: '#fff', fontWeight: '700', fontSize: 20 },
+  avatarImg: { width: 56, height: 56, borderRadius: 28 },
 
   info:     { flex: 1 },
   name:     { fontSize: 17, fontWeight: '700', color: '#1A202C', marginBottom: 4 },

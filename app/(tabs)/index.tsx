@@ -8,6 +8,8 @@ import { getProfiles } from '../../src/services/profile.service';
 import { getMeasurements } from '../../src/services/measurement.service';
 import { Profile, Measurement } from '../../src/db/schema';
 import { formatHeight } from '../../src/utils/weight';
+import { AvatarDisplay } from '../../src/components/avatar/AvatarDisplay';
+import { buildAvatarConfig } from '../../src/components/avatar/types';
 
 type MilestoneFeedItem = { profile: Profile; measurement: Measurement };
 
@@ -32,7 +34,7 @@ function MilestoneCard({ item, primaryUnit }: { item: MilestoneFeedItem; primary
           {profile.profileImage ? (
             <Image source={{ uri: profile.profileImage }} style={styles.avatarImg} />
           ) : (
-            <Text style={styles.avatarText}>{profile.name.charAt(0).toUpperCase()}</Text>
+            <AvatarDisplay config={buildAvatarConfig(profile)} size={44} compact />
           )}
         </View>
         <View style={styles.headerText}>
@@ -130,13 +132,12 @@ const styles = StyleSheet.create({
 
   avatar: {
     width: 44, height: 44, borderRadius: 22,
-    backgroundColor: '#4A90D9',
+    backgroundColor: '#EDF2F7',
     alignItems: 'center', justifyContent: 'center',
     overflow: 'hidden',
     flexShrink: 0,
   },
-  avatarImg:  { width: 44, height: 44, borderRadius: 22 },
-  avatarText: { color: '#fff', fontWeight: '700', fontSize: 18 },
+  avatarImg: { width: 44, height: 44, borderRadius: 22 },
 
   headerText: { flex: 1 },
   profileName: { fontSize: 15, fontWeight: '700', color: '#1A202C', marginBottom: 2 },

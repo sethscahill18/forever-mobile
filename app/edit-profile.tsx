@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { Alert, View, StyleSheet, Pressable } from 'react-native';
 import { Stack, router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { ProfileForm, ProfileFormValues } from '../src/components/shared/ProfileForm';
+import { ProfileForm, ProfileFormValues, profileFormToDb } from '../src/components/shared/ProfileForm';
 import { updateProfile, deleteProfile } from '../src/services/profile.service';
 import { db } from '../src/db/database';
 import { profiles, Profile } from '../src/db/schema';
@@ -28,7 +28,7 @@ export default function EditProfileScreen() {
     if (!id) return;
     setLoading(true);
     try {
-      await updateProfile(id, values);
+      await updateProfile(id, profileFormToDb(values));
       router.back();
     } catch {
       Alert.alert('Error', 'Could not update profile');

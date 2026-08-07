@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Alert, View, Text, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
-import { ProfileForm, ProfileFormValues } from '../../src/components/shared/ProfileForm';
+import { ProfileForm, ProfileFormValues, profileFormToDb } from '../../src/components/shared/ProfileForm';
 import { createProfile } from '../../src/services/profile.service';
 import { useAuthStore } from '../../src/store/auth.store';
 import { useActiveProfileStore } from '../../src/store/activeProfile.store';
@@ -16,7 +16,7 @@ export default function CreateProfileScreen() {
     if (!userId) return;
     setLoading(true);
     try {
-      const profile = await createProfile(userId, values);
+      const profile = await createProfile(userId, profileFormToDb(values));
       setProfile(profile);
       router.back();
     } catch {

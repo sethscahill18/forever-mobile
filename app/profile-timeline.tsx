@@ -1,6 +1,5 @@
 import { useCallback, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
-import KitchenScene from '../src/components/kitchen/KitchenScene';
+import { View, Text, ScrollView, StyleSheet, Pressable, Image } from 'react-native';
 import { Stack, useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -13,6 +12,7 @@ import {
 } from 'react-native-svg';
 import { db } from '../src/db/database';
 import { profiles, Profile, Measurement } from '../src/db/schema';
+import { AvatarSection } from '../src/components/scene/AvatarSection';
 import { getMeasurements } from '../src/services/measurement.service';
 import { useSettingsStore } from '../src/store/settings.store';
 import { formatHeight, toGraphValue } from '../src/utils/weight';
@@ -360,9 +360,22 @@ export default function ProfileKitchenScreen() {
         style={styles.container}
         onLayout={(e) => onContainerLayout(e.nativeEvent.layout.height)}
       >
-        {/* ── Kitchen scene ── */}
+        {/* ── Scene area — background layer ── */}
+        <View style={styles.kitchen}>
+          <Image
+            source={require('../assets/scenes/room_1_background.png')}
+            style={{ width: '100%', height: '100%' }}
+            resizeMode="cover"
+          />
+        </View>
+
+        {/* ── Avatar — right 1/3, bottom 75% of scene height ── */}
         {profile && (
-          <KitchenScene profile={profile} measurements={measurements} />
+          <View style={styles.avatarPane}>
+            <View style={styles.avatarArea}>
+              <AvatarSection profile={profile} />
+            </View>
+          </View>
         )}
 
         {/* ── Bottom sheet ── */}
@@ -458,6 +471,33 @@ export default function ProfileKitchenScreen() {
 const styles = StyleSheet.create({
   screen:    { flex: 1, backgroundColor: '#E8F4FD' },
   container: { flex: 1 },
+
+  kitchen: {
+    position:        'absolute',
+    top:             0,
+    left:            0,
+    right:           0,
+    bottom:          120,         // COLLAPSED_H — stops at top of collapsed sheet
+    backgroundColor: '#E8F4FD',  // fallback while image loads
+    overflow:        'hidden',
+  },
+
+  // Avatar overlay — right third of scene, bottom 75% of scene height
+  avatarPane: {
+    position: 'absolute',
+    right:    0,
+    top:      0,
+    bottom:   120,               // COLLAPSED_H
+    width:    '33.33%',
+  },
+  // Absolutely positioned inside avatarPane — top:25% leaves the shelf clear
+  avatarArea: {
+    position: 'absolute',
+    top:      '25%',
+    left:     0,
+    right:    0,
+    bottom:   '7%',
+  },
 
   // Bottom sheet
   sheet: {

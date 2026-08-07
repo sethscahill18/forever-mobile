@@ -58,4 +58,25 @@ export async function initDatabase() {
   try {
     await sqlite.execAsync(`ALTER TABLE profiles ADD COLUMN profile_image TEXT;`);
   } catch (_) {}
+  try {
+    await sqlite.execAsync(`ALTER TABLE profiles ADD COLUMN avatar_skin_tone TEXT NOT NULL DEFAULT '#F5CBA7';`);
+  } catch (_) {}
+  try {
+    await sqlite.execAsync(`ALTER TABLE profiles ADD COLUMN avatar_hair_style TEXT NOT NULL DEFAULT 'short_straight';`);
+  } catch (_) {}
+  try {
+    await sqlite.execAsync(`ALTER TABLE profiles ADD COLUMN avatar_hair_colour TEXT NOT NULL DEFAULT '#4A2C0A';`);
+  } catch (_) {}
+  try {
+    await sqlite.execAsync(`ALTER TABLE profiles ADD COLUMN avatar_clothing_style TEXT NOT NULL DEFAULT 'tshirt';`);
+  } catch (_) {}
+  try {
+    await sqlite.execAsync(`ALTER TABLE profiles ADD COLUMN avatar_clothing_colour TEXT NOT NULL DEFAULT '#4A90D9';`);
+  } catch (_) {}
+  try {
+    await sqlite.execAsync(`ALTER TABLE profiles ADD COLUMN avatar_id TEXT;`);
+  } catch (_) {}
+  try {
+    await sqlite.execAsync(`ALTER TABLE profiles ADD COLUMN gender TEXT NOT NULL DEFAULT 'male';`);
+  } catch (_) {}
 }

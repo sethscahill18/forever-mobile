@@ -22,15 +22,14 @@ import ShelfRocket1Svg    from '../../../assets/kitchen/shelf_rocket_1.svg';
 import ShelfFlowerPotSvg  from '../../../assets/kitchen/shelf_flower_pot.svg';
 import ShelfBookSvg       from '../../../assets/kitchen/shelf_book.svg';
 
-// ─── Scene coordinate constants ───────────────────────────────────────────────
-// All SVG assets share viewBox="0 0 390 844"
+// ─── Scene coordinate constants (all SVG assets share viewBox="0 0 390 844") ──
 const SCENE_VB     = '0 0 390 844';
-const FLOOR_Y      = 720;   // SVG y for 0 cm (floor level)
-const CEIL_Y       = 80;    // SVG y for MAX_HEIGHT_CM (top of door frame)
-const MAX_CM       = 210;   // maximum measurable height in cm
-const MARK_X1      = 68;    // mark line left x (on wall, left of door frame)
-const MARK_X2      = 92;    // mark line right x (just inside door frame)
-const MARK_LABEL_X = 62;    // label right-anchor x
+const FLOOR_Y      = 720;
+const CEIL_Y       = 80;
+const MAX_CM       = 210;
+const MARK_X1      = 68;
+const MARK_X2      = 92;
+const MARK_LABEL_X = 62;
 
 // ─── Colour maps ──────────────────────────────────────────────────────────────
 const WALL_COLOURS: Record<string, string> = {
@@ -86,6 +85,17 @@ function starPath(cx: number, cy: number, outerR: number, innerR: number): strin
   return `M${pts[0]} L${pts.slice(1).join(' L')} Z`;
 }
 
+// Wrapper that handles absolute positioning so SVG components receive only
+// pixel dimensions — passing absoluteFillObject directly to an SVG causes
+// Yoga to emit bogus constraint sizes (2^47).
+function Layer({ children }: { children: React.ReactNode }) {
+  return (
+    <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+      {children}
+    </View>
+  );
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 interface KitchenSceneProps {
   profile: Profile;
@@ -94,105 +104,90 @@ interface KitchenSceneProps {
 
 export default function KitchenScene({ profile, measurements }: KitchenSceneProps) {
   const primaryUnit = useSettingsStore((s) => s.primaryUnit);
-  const [size, setSize] = React.useState({ w: 390, h: 844 });
+  const [size, setSize] = React.useState<{ w: number; h: number } | null>(null);
 
   const wallFill = WALL_COLOURS[profile.theme]      ?? WALL_COLOURS.red;
   const doorFill = DOOR_COLOURS[profile.doorColour] ?? DOOR_COLOURS.black;
 
-  const DoorSvg      = DOOR_SVGS[profile.doorStyle    as keyof typeof DOOR_SVGS]      ?? DoorStyle1Svg;
-  const HandleSvg    = HANDLE_SVGS[profile.handleStyle as keyof typeof HANDLE_SVGS]   ?? HandleStyle1Svg;
-  const AvatarSvg    = AVATAR_SVGS[profile.avatar      as keyof typeof AVATAR_SVGS]   ?? AvatarChildSvg;
+  const DoorSvg      = DOOR_SVGS[profile.doorStyle       as keyof typeof DOOR_SVGS]      ?? DoorStyle1Svg;
+  const HandleSvg    = HANDLE_SVGS[profile.handleStyle   as keyof typeof HANDLE_SVGS]    ?? HandleStyle1Svg;
+  const AvatarSvg    = AVATAR_SVGS[profile.avatar        as keyof typeof AVATAR_SVGS]    ?? AvatarChildSvg;
   const ShelfItemSvg = SHELF_ITEM_SVGS[profile.shelfItems as keyof typeof SHELF_ITEM_SVGS] ?? ShelfRocket1Svg;
 
-  const newestId = measurements.length > 0 ? measurements[0].id : null;
-  // measurements is newest-first; reverse for draw order (oldest under newest)
-  const oldest_first = [...measurements].reverse();
-
-  const svgProps = {
-    style: StyleSheet.absoluteFillObject as object,
-    width: size.w,
-    height: size.h,
-    viewBox: SCENE_VB,
-    preserveAspectRatio: 'none' as const,
-  };
+  const newestId     = measurements.length > 0 ? measurements[0].id : null;
+  const oldestFirst  = [...measurements].reverse();
 
   return (
     <View
       style={styles.container}
-      onLayout={(e) =>
-        setSize({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })
-      }
+      onLayout={(e) => {
+        const { width, height } = e.nativeEvent.layout;
+        setSize({ w: width, h: height });
+      }}
     >
-      {/* 1. Wall base colour */}
+      {/* Wall base colour — rendered immediately, no size dependency */}
       <View style={[StyleSheet.absoluteFillObject, { backgroundColor: wallFill }]} />
 
-      {/* 2. Wall decoration — floor strip, baseboard */}
-      <WallDecorSvg {...svgProps} />
+      {/* SVG layers — deferred until we have a real pixel size */}
+      {size !== null && (() => {
+        const svgDims = { width: size.w, height: size.h, viewBox: SCENE_VB, preserveAspectRatio: 'none' as const };
+        return (
+          <>
+            <Layer><WallDecorSvg {...svgDims} /></Layer>
 
-      {/* 3. Door panel fill colour */}
-      <Svg {...svgProps}>
-        <Rect x={95} y={88} width={160} height={632} fill={doorFill} />
-      </Svg>
+            <Layer>
+              <Svg {...svgDims}>
+                <Rect x={95} y={88} width={160} height={632} fill={doorFill} />
+              </Svg>
+            </Layer>
 
-      {/* 4. Door frame / style lines */}
-      <DoorSvg {...svgProps} />
+            <Layer><DoorSvg    {...svgDims} /></Layer>
+            <Layer><HandleSvg  {...svgDims} /></Layer>
+            <Layer><ShelfSvg   {...svgDims} /></Layer>
+            <Layer><ShelfItemSvg {...svgDims} /></Layer>
+            <Layer><AvatarSvg  {...svgDims} /></Layer>
 
-      {/* 5. Door handle */}
-      <HandleSvg {...svgProps} />
+            {oldestFirst.length > 0 && (
+              <Layer>
+                <Svg {...svgDims}>
+                  {oldestFirst.map((m) => {
+                    const y = heightToY(m.heightCm);
+                    if (y < CEIL_Y || y > FLOOR_Y) return null;
 
-      {/* 6. Shelf plank */}
-      <ShelfSvg {...svgProps} />
+                    const isLatest    = m.id === newestId;
+                    const isMilestone = m.isMilestone === 1;
+                    const lineColour  = isMilestone ? '#D69E2E' : '#8B6914';
+                    const labelColour = isMilestone ? '#C07700' : '#5D4037';
+                    const x2          = isMilestone ? MARK_X2 + 8 : MARK_X2;
+                    const label       = primaryUnit === 'ft' && m.heightFt != null && m.heightIn != null
+                      ? `${m.heightFt}'${m.heightIn}"`
+                      : formatHeight(m.heightCm, primaryUnit);
 
-      {/* 7. Shelf item */}
-      <ShelfItemSvg {...svgProps} />
-
-      {/* 8. Avatar silhouette */}
-      <AvatarSvg {...svgProps} />
-
-      {/* 9. Height marks (oldest rendered first so newest sits on top) */}
-      {oldest_first.length > 0 && (
-        <Svg {...svgProps}>
-          {oldest_first.map((m) => {
-            const y           = heightToY(m.heightCm);
-            if (y < CEIL_Y || y > FLOOR_Y) return null;
-
-            const isLatest    = m.id === newestId;
-            const isMilestone = m.isMilestone === 1;
-            const lineColour  = isMilestone ? '#D69E2E' : '#8B6914';
-            const labelColour = isMilestone ? '#C07700' : '#5D4037';
-            const lineWidth   = isLatest ? 2.5 : 1.5;
-            const x2          = isMilestone ? MARK_X2 + 8 : MARK_X2;
-
-            const label = primaryUnit === 'ft' && m.heightFt != null && m.heightIn != null
-              ? `${m.heightFt}'${m.heightIn}"`
-              : formatHeight(m.heightCm, primaryUnit);
-
-            return (
-              <G key={m.id}>
-                <SvgLine
-                  x1={MARK_X1} y1={y} x2={x2} y2={y}
-                  stroke={lineColour} strokeWidth={lineWidth}
-                />
-                {isMilestone && (
-                  <Path
-                    d={starPath(x2 + 7, y, 5, 2.2)}
-                    fill="#D69E2E"
-                  />
-                )}
-                <SvgText
-                  x={MARK_LABEL_X} y={y - 3}
-                  fontSize={9}
-                  fill={labelColour}
-                  textAnchor="end"
-                  fontWeight={isLatest || isMilestone ? '700' : '400'}
-                >
-                  {label}
-                </SvgText>
-              </G>
-            );
-          })}
-        </Svg>
-      )}
+                    return (
+                      <G key={m.id}>
+                        <SvgLine
+                          x1={MARK_X1} y1={y} x2={x2} y2={y}
+                          stroke={lineColour} strokeWidth={isLatest ? 2.5 : 1.5}
+                        />
+                        {isMilestone && (
+                          <Path d={starPath(x2 + 7, y, 5, 2.2)} fill="#D69E2E" />
+                        )}
+                        <SvgText
+                          x={MARK_LABEL_X} y={y - 3}
+                          fontSize={9} fill={labelColour} textAnchor="end"
+                          fontWeight={isLatest || isMilestone ? '700' : '400'}
+                        >
+                          {label}
+                        </SvgText>
+                      </G>
+                    );
+                  })}
+                </Svg>
+              </Layer>
+            )}
+          </>
+        );
+      })()}
     </View>
   );
 }
