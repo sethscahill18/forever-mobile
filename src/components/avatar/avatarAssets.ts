@@ -21,6 +21,9 @@ export const COMPLETE_AVATARS: CompleteAvatar[] = [
   // ── Baby ─────────────────────────────────────────────────────────────────
   { id: 'male_baby_blue',   bodyType: 'baby',     gender: 'male',   source: require('../../../assets/avatar/complete/male_baby_blue.png') },
   { id: 'male_baby_red',    bodyType: 'baby',     gender: 'male',   source: require('../../../assets/avatar/complete/male_baby_red.png') },
+  // ── Child ────────────────────────────────────────────────────────────────
+  { id: 'male_child_blue',  bodyType: 'child',    gender: 'male',   source: require('../../../assets/avatar/complete/male_child_blue.png') },
+  { id: 'male_child_red',   bodyType: 'child',    gender: 'male',   source: require('../../../assets/avatar/complete/male_child_red.png') },
   // ── Teenager ─────────────────────────────────────────────────────────────
   { id: 'male_teen_blue',   bodyType: 'teenager', gender: 'male',   source: require('../../../assets/avatar/complete/male_teen_blue.png') },
   { id: 'male_teen_red',    bodyType: 'teenager', gender: 'male',   source: require('../../../assets/avatar/complete/male_teen_red.png') },
