@@ -5,10 +5,14 @@ import { buildAvatarConfig } from '../avatar/types';
 import { COMPLETE_AVATARS, CANVAS_ASPECT } from '../avatar/avatarAssets';
 
 interface Props {
-  profile: Profile;
+  profile:         Profile;
+  latestHeightCm?: number;
 }
 
-export function AvatarSection({ profile }: Props) {
+// At scale=1 the avatar visually reaches this many cm on the ruler spine.
+const SCALE_REF_CM = 87;
+
+export function AvatarSection({ profile, latestHeightCm }: Props) {
   const { width: screenWidth } = useWindowDimensions();
 
   const config = buildAvatarConfig(profile);
@@ -18,17 +22,12 @@ export function AvatarSection({ profile }: Props) {
 
   if (!found) return null;
 
-  const SCENE_SCALE: Record<string, number> = {
-    baby:     1.00,
-    child:    1.50,
-    teenager: 1.84,
-    adult:    2.00,
-  };
-
   const sectionWidth = screenWidth / 3;
-  const scale        = SCENE_SCALE[found.bodyType] ?? 1;
-  const imgW         = sectionWidth * scale;
-  const imgH         = imgW / CANVAS_ASPECT;
+  const scale        = latestHeightCm && latestHeightCm > 0
+    ? latestHeightCm / SCALE_REF_CM
+    : 1;
+  const imgW = sectionWidth * scale;
+  const imgH = imgW / CANVAS_ASPECT;
 
   return (
     <View style={styles.container}>

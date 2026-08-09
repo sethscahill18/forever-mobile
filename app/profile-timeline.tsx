@@ -388,7 +388,7 @@ export default function ProfileKitchenScreen() {
         {profile && (
           <View style={styles.avatarPane}>
             <View style={styles.avatarArea}>
-              <AvatarSection profile={profile} />
+              <AvatarSection profile={profile} latestHeightCm={latest?.heightCm} />
             </View>
           </View>
         )}

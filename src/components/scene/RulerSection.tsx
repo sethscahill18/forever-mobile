@@ -52,9 +52,9 @@ export function RulerSection({ profile, measurements, primaryUnit, paneHeight }:
   const avatarConfig = buildAvatarConfig(profile);
 
   const RULER_X   = Math.round(w * 0.36);  // number label anchor
-  const TICK_X    = Math.round(w * 0.43);  // tick mark centre
-  const FLOOR_Y   = h * 0.93;
-  const CEIL_Y    = h * 0.05;
+  const TICK_X    = Math.round(w * 0.48);  // tick mark centre
+  const FLOOR_Y   = h * 0.87;
+  const CEIL_Y    = h * 0.02;
   const CARD_LEFT = TICK_X + 10;
   const CARD_W    = w - CARD_LEFT - 6;
 
@@ -113,8 +113,10 @@ export function RulerSection({ profile, measurements, primaryUnit, paneHeight }:
         {gradMarks.map((cm) => {
           const y         = heightToY(cm);
           if (y < CEIL_Y - 1 || y > FLOOR_Y + 1) return null;
-          const suppress  = isNearLatest(cm);
-          const color     = '#555';
+          const suppress   = isNearLatest(cm);
+          const isCentury  = cm % 100 === 0;
+          const labelSize  = isCentury ? 20 : 13;
+          const color      = '#555';
           return (
             <G key={`g${cm}`}>
               <SvgLine
@@ -124,8 +126,8 @@ export function RulerSection({ profile, measurements, primaryUnit, paneHeight }:
               />
               {!suppress && (
                 <SvgText
-                  x={RULER_X - 6} y={y + 3.5}
-                  fontSize={20} fill={color} textAnchor="end"
+                  x={RULER_X - 4} y={isCentury ? y + 7 : y + 5}
+                  fontSize={labelSize} fill={color} textAnchor="end"
                 >
                   {cm}
                 </SvgText>
@@ -138,13 +140,27 @@ export function RulerSection({ profile, measurements, primaryUnit, paneHeight }:
         {latestM && (() => {
           const y = heightToY(latestM.heightCm);
           if (y < CEIL_Y || y > FLOOR_Y) return null;
+          const label = cmLabel(latestM, primaryUnit);
           return (
-            <SvgText
-              x={RULER_X - 6} y={y + 3.5}
-              fontSize={20} fill="#4B9EFF" textAnchor="end" fontWeight="700"
-            >
-              {cmLabel(latestM, primaryUnit)}
-            </SvgText>
+            <G>
+              {/* Light blue outline rendered behind */}
+              <SvgText
+                x={RULER_X - 4} y={y + 7}
+                fontSize={24} fill="none"
+                stroke="#B3D9FF" strokeWidth={4}
+                textAnchor="end" fontWeight="700"
+              >
+                {label}
+              </SvgText>
+              {/* Blue fill rendered on top */}
+              <SvgText
+                x={RULER_X - 4} y={y + 7}
+                fontSize={24} fill="#4B9EFF"
+                textAnchor="end" fontWeight="700"
+              >
+                {label}
+              </SvgText>
+            </G>
           );
         })()}
 
