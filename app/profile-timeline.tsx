@@ -13,6 +13,7 @@ import {
 import { db } from '../src/db/database';
 import { profiles, Profile, Measurement } from '../src/db/schema';
 import { AvatarSection } from '../src/components/scene/AvatarSection';
+import { RulerSection } from '../src/components/scene/RulerSection';
 import { getMeasurements } from '../src/services/measurement.service';
 import { useSettingsStore } from '../src/store/settings.store';
 import { formatHeight, toGraphValue } from '../src/utils/weight';
@@ -285,6 +286,7 @@ export default function ProfileKitchenScreen() {
   const [profile,      setProfile]      = useState<Profile | null>(null);
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
   const [isExpanded,   setIsExpanded]   = useState(false);
+  const [rulerH,       setRulerH]       = useState(0);
 
   useFocusEffect(
     useCallback(() => {
@@ -368,6 +370,19 @@ export default function ProfileKitchenScreen() {
             resizeMode="cover"
           />
         </View>
+
+        {/* ── Profile info — top 10%, left 1/4 ── */}
+        <View style={styles.profileInfoPane} />
+
+        {/* ── Ruler — left 1/3, below profile info ── */}
+        {profile && (
+          <View
+            style={styles.rulerPane}
+            onLayout={(e) => setRulerH(e.nativeEvent.layout.height)}
+          >
+            <RulerSection profile={profile} measurements={measurements} primaryUnit={primaryUnit} paneHeight={rulerH} />
+          </View>
+        )}
 
         {/* ── Avatar — right 1/3, bottom 75% of scene height ── */}
         {profile && (
@@ -480,6 +495,24 @@ const styles = StyleSheet.create({
     bottom:          120,         // COLLAPSED_H — stops at top of collapsed sheet
     backgroundColor: '#E8F4FD',  // fallback while image loads
     overflow:        'hidden',
+  },
+
+  // Ruler — left third of scene
+  profileInfoPane: {
+    position:        'absolute',
+    left:            0,
+    top:             0,
+    height:          '15%',
+    width:           '40%',
+    backgroundColor: 'rgba(100, 149, 237, 0.35)', // diagnostic blue
+  },
+
+  rulerPane: {
+    position:        'absolute',
+    left:            0,
+    top:             '15%',
+    bottom:          120,                      // COLLAPSED_H
+    width:           '33.33%',
   },
 
   // Avatar overlay — right third of scene, bottom 75% of scene height

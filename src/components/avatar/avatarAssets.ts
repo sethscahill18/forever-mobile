@@ -27,6 +27,9 @@ export const COMPLETE_AVATARS: CompleteAvatar[] = [
   // ── Teenager ─────────────────────────────────────────────────────────────
   { id: 'male_teen_blue',   bodyType: 'teenager', gender: 'male',   source: require('../../../assets/avatar/complete/male_teen_blue.png') },
   { id: 'male_teen_red',    bodyType: 'teenager', gender: 'male',   source: require('../../../assets/avatar/complete/male_teen_red.png') },
+  // ── Adult ────────────────────────────────────────────────────────────────
+  { id: 'male_adult_blue',  bodyType: 'adult',    gender: 'male',   source: require('../../../assets/avatar/complete/male_adult_blue.png') },
+  { id: 'male_adult_red',   bodyType: 'adult',    gender: 'male',   source: require('../../../assets/avatar/complete/male_adult_red.png') },
   { id: 'female_teen_blue', bodyType: 'teenager', gender: 'female', source: require('../../../assets/avatar/complete/female_teen_blue.png') },
   { id: 'female_teen_red',  bodyType: 'teenager', gender: 'female', source: require('../../../assets/avatar/complete/female_teen_red.png') },
 ];
