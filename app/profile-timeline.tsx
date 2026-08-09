@@ -14,6 +14,7 @@ import { db } from '../src/db/database';
 import { profiles, Profile, Measurement } from '../src/db/schema';
 import { AvatarSection } from '../src/components/scene/AvatarSection';
 import { RulerSection } from '../src/components/scene/RulerSection';
+import { ProfileInfoSection } from '../src/components/scene/ProfileInfoSection';
 import { getMeasurements } from '../src/services/measurement.service';
 import { useSettingsStore } from '../src/store/settings.store';
 import { formatHeight, toGraphValue } from '../src/utils/weight';
@@ -371,8 +372,12 @@ export default function ProfileKitchenScreen() {
           />
         </View>
 
-        {/* ── Profile info — top 10%, left 1/4 ── */}
-        <View style={styles.profileInfoPane} />
+        {/* ── Profile info — top 15%, left 40% ── */}
+        {profile && (
+          <View style={styles.profileInfoPane}>
+            <ProfileInfoSection profile={profile} />
+          </View>
+        )}
 
         {/* ── Ruler — left 1/3, below profile info ── */}
         {profile && (
@@ -504,7 +509,6 @@ const styles = StyleSheet.create({
     top:             0,
     height:          '15%',
     width:           '40%',
-    backgroundColor: 'rgba(100, 149, 237, 0.35)', // diagnostic blue
   },
 
   rulerPane: {
