@@ -19,6 +19,7 @@ import { getMeasurements } from '../src/services/measurement.service';
 import { useSettingsStore } from '../src/store/settings.store';
 import { formatHeight, toGraphValue } from '../src/utils/weight';
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 
 // ─── Chart constants ──────────────────────────────────────────────────────────
 const SVG_H  = 280;
@@ -341,19 +342,28 @@ export default function ProfileKitchenScreen() {
     <View style={styles.screen}>
       <Stack.Screen
         options={{
-          headerShown:      true,
-          title:            profile?.name ?? '',
-          headerBackTitle:  'Profiles',
-          headerStyle:      { backgroundColor: '#fff' },
-          headerTitleStyle: { fontWeight: '700', color: '#1A202C' },
-          headerTintColor:  '#4A90D9',
+          headerShown:       true,
+          title:             '',
+          headerTransparent: true,
+          headerBackground:  () => <View style={{ flex: 1, backgroundColor: 'transparent' }} />,
+          headerLeft: () => (
+            <Pressable onPress={() => router.back()} hitSlop={12} style={{ marginLeft: 4 }}>
+              <BlurView intensity={70} tint="light" style={styles.glassBtn}>
+                <View style={styles.glassBtnSpecular} />
+                <Ionicons name="arrow-back" size={20} color="rgba(0,0,0,0.75)" />
+              </BlurView>
+            </Pressable>
+          ),
           headerRight: () => (
             <Pressable
               onPress={() => router.push({ pathname: '/edit-profile', params: { id } })}
               hitSlop={12}
-              style={{ paddingRight: 4 }}
+              style={{ marginRight: 4 }}
             >
-              <Ionicons name="create-outline" size={22} color="#4A90D9" />
+              <BlurView intensity={70} tint="light" style={styles.glassBtn}>
+                <View style={styles.glassBtnSpecular} />
+                <Ionicons name="create" size={18} color="rgba(0,0,0,0.75)" />
+              </BlurView>
             </Pressable>
           ),
         }}
@@ -366,7 +376,7 @@ export default function ProfileKitchenScreen() {
         {/* ── Scene area — background layer ── */}
         <View style={styles.kitchen}>
           <Image
-            source={require('../assets/scenes/room_1_background.png')}
+            source={require('../assets/scenes/room_1_background_2.png')}
             style={{ width: '100%', height: '100%' }}
             resizeMode="cover"
           />
@@ -491,6 +501,29 @@ export default function ProfileKitchenScreen() {
 const styles = StyleSheet.create({
   screen:    { flex: 1, backgroundColor: '#E8F4FD' },
   container: { flex: 1 },
+  glassBtn: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    paddingHorizontal: 10,
+    paddingVertical:   6,
+    borderRadius:      20,
+    overflow:          'hidden',
+    borderWidth:       0.5,
+    borderColor:       'rgba(255,255,255,0.6)',
+    gap:               3,
+  },
+  glassBtnSpecular: {
+    position:        'absolute',
+    top:             0,
+    left:            0,
+    right:           0,
+    height:          '50%',
+    backgroundColor: 'rgba(255,255,255,0.22)',
+  },
+  glassBtnText: {
+    fontSize: 17,
+    color:    'rgba(0,0,0,0.75)',
+  },
 
   kitchen: {
     position:        'absolute',
@@ -516,7 +549,7 @@ const styles = StyleSheet.create({
     left:            0,
     top:             '15%',
     bottom:          120,                      // COLLAPSED_H
-    width:           '33.33%',
+    width:           '40%',
   },
 
   // Avatar overlay — right third of scene, bottom 75% of scene height

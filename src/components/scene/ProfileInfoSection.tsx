@@ -45,8 +45,10 @@ const styles = StyleSheet.create({
     height:       ICON_SIZE,
     borderRadius: ICON_SIZE / 2,
     borderWidth:  6,
-    borderColor:  '#8B6914',
-    overflow:     'hidden',
+    borderColor:     '#8B6914',
+    overflow:        'hidden',
+    alignItems:      'center',
+    justifyContent:  'center',
   },
   name: {
     position:   'absolute',
