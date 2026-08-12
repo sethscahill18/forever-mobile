@@ -1,9 +1,9 @@
-import React from 'react';
 import { View, StyleSheet, useWindowDimensions, Text } from 'react-native';
 import { BlurView } from 'expo-blur';
 import Svg, { Line as SvgLine, Text as SvgText, G } from 'react-native-svg';
 import { Measurement, Profile } from '../../db/schema';
-import { buildAvatarConfig } from '../avatar/types';
+
+const FILL = { position: 'absolute', top: 0, left: 0, bottom: 0, right: 0 } as const;
 
 interface Props {
   profile:      Profile;
@@ -42,10 +42,10 @@ export function RulerSection({ profile, measurements, primaryUnit, paneHeight }:
 
   const RULER_X   = Math.round(w * 0.36);
   const TICK_X    = Math.round(w * 0.48);
-  const FLOOR_Y   = h * 0.87;
-  const CEIL_Y    = h * 0.02;
+  const FLOOR_Y   = h * 0.9;
+  const CEIL_Y    = h * 0.05;
   const CARD_LEFT = TICK_X + 16;
-  const CARD_W    = paneW - CARD_LEFT - 6;
+  const CARD_W    = paneW - CARD_LEFT - 2;
 
   function heightToY(cm: number): number {
     return FLOOR_Y - (cm / MAX_CM) * (FLOOR_Y - CEIL_Y);
@@ -90,9 +90,9 @@ export function RulerSection({ profile, measurements, primaryUnit, paneHeight }:
   }
 
   return (
-    <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+    <View style={FILL} pointerEvents="none">
 
-      <Svg width={paneW} height={h} style={StyleSheet.absoluteFillObject}>
+      <Svg width={paneW} height={h}>
 
         {/* Fine ticks (every 2 cm, centred on spine) */}
         {fineTicks.map((cm) => {
@@ -131,18 +131,6 @@ export function RulerSection({ profile, measurements, primaryUnit, paneHeight }:
           );
         })}
 
-        {/* Milestone ticks on spine (gold for older, blue for latest) */}
-        {milestones.map((m) => {
-          const y = heightToY(m.heightCm);
-          if (y < CEIL_Y || y > FLOOR_Y) return null;
-          const isLatest = m.id === newestId;
-          return (
-            <SvgLine key={`mt${m.id}`}
-              x1={TICK_X - 14} y1={y} x2={TICK_X + 14} y2={y}
-              stroke={isLatest ? '#4B9EFF' : '#D69E2E'} strokeWidth={2.5} />
-          );
-        })}
-
         {/* Connector lines: spine edge → card left-centre */}
         {cardItems.map(({ m, cardTop, tickY }) => {
           const isLatest = m.id === newestId;
@@ -156,6 +144,17 @@ export function RulerSection({ profile, measurements, primaryUnit, paneHeight }:
               strokeDasharray="3,3" />
           );
         })}
+
+        {/* Latest measurement tick — blue */}
+        {latestM && (() => {
+          const y = heightToY(latestM.heightCm);
+          if (y < CEIL_Y || y > FLOOR_Y) return null;
+          return (
+            <SvgLine
+              x1={TICK_X - 14} y1={y} x2={TICK_X + 14} y2={y}
+              stroke="#4B9EFF" strokeWidth={2.5} />
+          );
+        })()}
 
         {/* Latest measurement height label — blue, outlined */}
         {latestM && (() => {

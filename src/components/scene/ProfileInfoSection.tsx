@@ -1,5 +1,5 @@
-import React from 'react';
 import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { Profile } from '../../db/schema';
 import { buildAvatarConfig } from '../avatar/types';
 import { AvatarDisplay } from '../avatar/AvatarDisplay';
@@ -8,27 +8,33 @@ interface Props {
   profile: Profile;
 }
 
-const ICON_SIZE = 68;
+const FRAME_SIZE = 100;
+const CLIP_SIZE  = 60;  // inner avatar circle
 
 export function ProfileInfoSection({ profile }: Props) {
   const { width: screenWidth } = useWindowDimensions();
   const avatarConfig = buildAvatarConfig(profile);
 
-  // Mirror RulerSection's TICK_X so the icon centre aligns with the spine.
   const rulerPaneW = screenWidth / 3;
   const TICK_X     = Math.round(rulerPaneW * 0.48);
-  const iconLeft   = TICK_X - ICON_SIZE / 2;
+  const frameLeft  = TICK_X - FRAME_SIZE / 2;
 
   return (
     <View style={styles.root}>
-      {/* Icon: centre aligned with ruler spine */}
-      <View style={[styles.iconFrame, { left: iconLeft }]}>
-        <AvatarDisplay config={avatarConfig} size={ICON_SIZE} compact />
+      {/* Liquid Glass frame */}
+      <BlurView intensity={70} tint="light" style={[styles.glassFrame, { left: frameLeft }]}>
+        <View style={styles.specular} />
+        {/* Avatar clipped to circle */}
+        <View style={styles.avatarClip}>
+          <AvatarDisplay config={avatarConfig} size={CLIP_SIZE} compact />
+        </View>
+      </BlurView>
+
+      {/* Name + age: vertically centred on icon */}
+      <View style={{ position: 'absolute', left: frameLeft + FRAME_SIZE + 12, top: '70%', marginTop: -(FRAME_SIZE / 2), height: FRAME_SIZE, justifyContent: 'center' }}>
+        <Text style={styles.name} numberOfLines={1}>{profile.name}</Text>
+        <Text style={{ fontSize: 16, color: '#374151', marginTop: 2 }}>12 years, 3 months</Text>
       </View>
-      {/* Name: starts to the right of the icon */}
-      <Text style={[styles.name, { left: TICK_X + ICON_SIZE / 2 + 10 }]} numberOfLines={2}>
-        {profile.name}
-      </Text>
     </View>
   );
 }
@@ -37,27 +43,38 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
   },
-  iconFrame: {
-    position:     'absolute',
-    top:          '50%',
-    marginTop:    -(ICON_SIZE / 2),
-    width:        ICON_SIZE,
-    height:       ICON_SIZE,
-    borderRadius: ICON_SIZE / 2,
-    borderWidth:  6,
-    borderColor:     '#8B6914',
+  glassFrame: {
+    position:        'absolute',
+    top:             '70%',
+    marginTop:       -(FRAME_SIZE / 2),
+    width:           FRAME_SIZE,
+    height:          FRAME_SIZE,
+    borderRadius:    FRAME_SIZE / 2,
+    overflow:        'hidden',
+    borderWidth:     0.5,
+    borderColor:     'rgba(255,255,255,0.6)',
+    alignItems:      'center',
+    justifyContent:  'center',
+  },
+  specular: {
+    position:        'absolute',
+    top:             0,
+    left:            0,
+    right:           0,
+    height:          '50%',
+    backgroundColor: 'rgba(255,255,255,0.22)',
+  },
+  avatarClip: {
+    width:           CLIP_SIZE,
+    height:          CLIP_SIZE,
+    borderRadius:    CLIP_SIZE / 2,
     overflow:        'hidden',
     alignItems:      'center',
     justifyContent:  'center',
   },
   name: {
-    position:   'absolute',
-    top:        0,
-    bottom:     0,
-    right:      8,
-    fontSize:   18,
+    fontSize:   36,
     fontWeight: '700',
     color:      '#2D1B0E',
-    textAlignVertical: 'center',
   },
 });

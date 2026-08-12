@@ -40,7 +40,7 @@ function formatDate(ts: number) {
 }
 
 function shortDate(ts: number) {
-  return new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function xLabel(ts: number, spansYears: boolean) {
@@ -83,6 +83,80 @@ function starPath(cx: number, cy: number, outerR: number, innerR: number): strin
 }
 
 type ChartPoint = { x: number; y: number; label: string; measurement: Measurement };
+
+function shortMonthDate(ts: number): string {
+  return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function valueLabel(m: Measurement, unit: 'cm' | 'ft'): string {
+  if (unit === 'ft' && m.heightFt != null && m.heightIn != null) {
+    return `${m.heightFt}'${Math.round(m.heightIn)}"`;
+  }
+  return `${m.heightCm.toFixed(1)}cm`;
+}
+
+function ThreeMonthGraph({ measurements, primaryUnit }: { measurements: Measurement[]; primaryUnit: 'cm' | 'ft' }) {
+  const [w, setW] = useState(0);
+
+  const _now = new Date(); const cutoff = new Date(_now.getFullYear(), _now.getMonth() - 3, _now.getDate()).getTime();
+  const pts = measurements
+    .filter(m => m.measuredAt >= cutoff && m.heightCm > 0)
+    .sort((a, b) => a.measuredAt - b.measuredAt);
+
+  if (pts.length === 0) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={{ fontSize: 11, color: '#A0AEC0' }}>No recent data</Text>
+      </View>
+    );
+  }
+
+  const CHART_H = 60;
+  const LABEL_H = 38;
+  const SVG_H   = CHART_H + LABEL_H;
+  const PAD_X   = 16;
+
+  const minH  = Math.min(...pts.map(m => m.heightCm));
+  const maxH  = Math.max(...pts.map(m => m.heightCm));
+  const range = maxH - minH || 1;
+
+  const toY = (cm: number) => 8 + (CHART_H - 14) * (1 - (cm - minH) / range);
+
+  const n       = pts.length;
+  const innerW  = Math.max(0, w - 2 * PAD_X);
+  const spacing = n > 1 ? innerW / (n - 1) : 0;
+
+  const dotPts = pts.map((m, i) => ({
+    x: PAD_X + (n === 1 ? innerW / 2 : i * spacing),
+    y: toY(m.heightCm),
+    m,
+  }));
+
+  const polyPoints = dotPts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+
+  return (
+    <View style={{ flex: 1 }} onLayout={e => setW(e.nativeEvent.layout.width)}>
+      {w > 0 && (
+        <Svg width={w} height={SVG_H}>
+          {n > 1 && (
+            <Polyline points={polyPoints} fill="none" stroke="#4A90D9" strokeWidth={1.5} />
+          )}
+          {dotPts.map((p, i) => (
+            <G key={i}>
+              <Circle cx={p.x} cy={p.y} r={5} fill="#B3D4F5" stroke="#4A90D9" strokeWidth={1.5} />
+              <SvgText x={p.x} y={CHART_H + 13} fontSize={9} fill="#718096" textAnchor="middle">
+                {shortMonthDate(p.m.measuredAt)}
+              </SvgText>
+              <SvgText x={p.x} y={CHART_H + 26} fontSize={9} fill="#2D3748" textAnchor="middle" fontWeight="600">
+                {valueLabel(p.m, primaryUnit)}
+              </SvgText>
+            </G>
+          ))}
+        </Svg>
+      )}
+    </View>
+  );
+}
 
 function HeightChart({
   measurements,
@@ -376,7 +450,7 @@ export default function ProfileKitchenScreen() {
         {/* ── Scene area — background layer ── */}
         <View style={styles.kitchen}>
           <Image
-            source={require('../assets/scenes/room_1_background_2.png')}
+            source={require('../assets/scenes/room_1_background_3.png')}
             style={{ width: '100%', height: '100%' }}
             resizeMode="cover"
           />
@@ -418,19 +492,14 @@ export default function ProfileKitchenScreen() {
               <View style={styles.latestRow}>
                 {latest ? (
                   <>
-                    <View style={styles.latestHeightRow}>
-                      <Text style={styles.latestHeight}>
-                        {formatMeasurement(latest, primaryUnit)}
-                      </Text>
-                      {measurements.length >= 2 && (() => {
-                        const delta = latest.heightCm - measurements[1].heightCm;
-                        const positive = delta >= 0;
-                        return (
-                          <Text style={[styles.deltaBadge, positive ? styles.deltaPositive : styles.deltaNegative]}>
-                            {formatDelta(delta, primaryUnit)}
-                          </Text>
-                        );
-                      })()}
+                    <View style={styles.latestLeft}>
+                      <Ionicons name="star" size={25} color="#B8973A" style={{ marginRight: 14 }} />
+                      <View style={{ flexDirection: 'column' }}>
+                        <Text style={styles.latestLabel}>LATEST HEIGHT</Text>
+                        <Text style={styles.latestHeight}>
+                          {formatMeasurement(latest, primaryUnit)}
+                        </Text>
+                      </View>
                     </View>
                     <Text style={styles.latestDate}>
                       {shortDate(latest.measuredAt)}
@@ -449,6 +518,35 @@ export default function ProfileKitchenScreen() {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
           >
+            {/* ── Growth Progress ── */}
+            {(() => {
+              const _now = new Date(); const cutoff = new Date(_now.getFullYear(), _now.getMonth() - 3, _now.getDate()).getTime();
+              const recent = measurements
+                .filter(m => m.measuredAt >= cutoff && m.heightCm > 0)
+                .sort((a, b) => a.measuredAt - b.measuredAt);
+              const delta = recent.length >= 2
+                ? recent[recent.length - 1].heightCm - recent[0].heightCm
+                : null;
+              return (
+                <View style={{ borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, marginBottom: 24, overflow: 'hidden' }}>
+                  <View style={{ flexDirection: 'row', padding: 14, alignItems: 'flex-start', minHeight: 100 }}>
+                    <View style={{ width: '45%', paddingRight: 8 }}>
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#4A5568', letterSpacing: 0.8, marginBottom: 8 }}>GROWTH PROGRESS</Text>
+                      {delta !== null ? (
+                        <Text style={{ fontSize: 26, fontWeight: '700', color: '#2D3748' }}>
+                          {delta >= 0 ? '+' : ''}{delta.toFixed(1)} cm
+                        </Text>
+                      ) : (
+                        <Text style={{ fontSize: 13, color: '#A0AEC0' }}>Not enough data</Text>
+                      )}
+                      <Text style={{ fontSize: 11, color: '#A0AEC0', marginTop: 4 }}>last 3 months</Text>
+                    </View>
+                    <ThreeMonthGraph measurements={measurements} primaryUnit={primaryUnit} />
+                  </View>
+                </View>
+              );
+            })()}
+
             <Text style={styles.sectionTitle}>Journey</Text>
             <HeightChart
               measurements={measurements}
@@ -530,7 +628,7 @@ const styles = StyleSheet.create({
     top:             0,
     left:            0,
     right:           0,
-    bottom:          120,         // COLLAPSED_H — stops at top of collapsed sheet
+    bottom:          0,
     backgroundColor: '#E8F4FD',  // fallback while image loads
     overflow:        'hidden',
   },
@@ -540,14 +638,14 @@ const styles = StyleSheet.create({
     position:        'absolute',
     left:            0,
     top:             0,
-    height:          '15%',
-    width:           '40%',
+    bottom:          '70%',
+    width:           '60%',
   },
 
   rulerPane: {
     position:        'absolute',
     left:            0,
-    top:             '15%',
+    top:             '30%',
     bottom:          120,                      // COLLAPSED_H
     width:           '40%',
   },
@@ -572,8 +670,8 @@ const styles = StyleSheet.create({
   // Bottom sheet
   sheet: {
     position:             'absolute',
-    left:                 0,
-    right:                0,
+    left:                 12,
+    right:                12,
     top:                  0,
     bottom:               0,
     backgroundColor:      '#fff',
@@ -588,14 +686,12 @@ const styles = StyleSheet.create({
   // Handle + collapsed content
   handleArea:    { alignItems: 'center', paddingTop: 10, paddingBottom: 16, paddingHorizontal: 20 },
   handlePill:    { width: 40, height: 4, borderRadius: 2, backgroundColor: '#CBD5E0', marginBottom: 14 },
-  latestRow:        { alignItems: 'center', gap: 4 },
-  latestHeightRow:  { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  latestHeight:     { fontSize: 30, fontWeight: '700', color: '#2D3748' },
-  latestDate:       { fontSize: 14, color: '#718096' },
-  latestNone:       { fontSize: 15, color: '#A0AEC0' },
-  deltaBadge:       { fontSize: 13, fontWeight: '600', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8 },
-  deltaPositive:    { color: '#276749', backgroundColor: '#C6F6D5' },
-  deltaNegative:    { color: '#9B2C2C', backgroundColor: '#FED7D7' },
+  latestRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', paddingHorizontal: 4 },
+  latestLeft:      { flexDirection: 'row', alignItems: 'flex-start' },
+  latestLabel:  { fontSize: 16, fontWeight: '700', color: '#4A5568', letterSpacing: 0.8 },
+  latestHeight: { fontSize: 30, fontWeight: '600', color: '#2D3748' },
+  latestDate:   { fontSize: 14, color: '#718096' },
+  latestNone:   { fontSize: 15, color: '#A0AEC0' },
 
   // Scroll content
   scrollContent:    { paddingHorizontal: 20, paddingTop: 4 },
