@@ -20,6 +20,7 @@ import { useSettingsStore } from '../src/store/settings.store';
 import { formatHeight, toGraphValue } from '../src/utils/weight';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
+import { useFonts, Nunito_400Regular, Nunito_500Medium, Nunito_600SemiBold, Nunito_800ExtraBold, Nunito_900Black } from '@expo-google-fonts/nunito';
 
 // ─── Chart constants ──────────────────────────────────────────────────────────
 const SVG_H  = 280;
@@ -114,7 +115,7 @@ function ThreeMonthGraph({ measurements, primaryUnit }: { measurements: Measurem
   const CHART_H = 60;
   const LABEL_H = 38;
   const SVG_H   = CHART_H + LABEL_H;
-  const PAD_X   = 16;
+  const PAD_X   = 22;
 
   const minH  = Math.min(...pts.map(m => m.heightCm));
   const maxH  = Math.max(...pts.map(m => m.heightCm));
@@ -143,7 +144,7 @@ function ThreeMonthGraph({ measurements, primaryUnit }: { measurements: Measurem
           )}
           {dotPts.map((p, i) => (
             <G key={i}>
-              <Circle cx={p.x} cy={p.y} r={5} fill="#B3D4F5" stroke="#4A90D9" strokeWidth={1.5} />
+              <Circle cx={p.x} cy={p.y} r={4} fill="#B3D4F5" stroke="#4A90D9" strokeWidth={1.5} />
               <SvgText x={p.x} y={CHART_H + 13} fontSize={9} fill="#718096" textAnchor="middle">
                 {shortMonthDate(p.m.measuredAt)}
               </SvgText>
@@ -359,6 +360,8 @@ export default function ProfileKitchenScreen() {
   const { id }      = useLocalSearchParams<{ id: string }>();
   const primaryUnit = useSettingsStore((s) => s.primaryUnit);
 
+  const [fontsLoaded] = useFonts({ Nunito_400Regular, Nunito_500Medium, Nunito_600SemiBold, Nunito_800ExtraBold, Nunito_900Black });
+  const nunitoFont = fontsLoaded ? 'Nunito_400Regular' : undefined;
   const [profile,      setProfile]      = useState<Profile | null>(null);
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
   const [isExpanded,   setIsExpanded]   = useState(false);
@@ -415,42 +418,35 @@ export default function ProfileKitchenScreen() {
   return (
     <View style={styles.screen}>
       <Stack.Screen
-        options={{
-          headerShown:       true,
-          title:             '',
-          headerTransparent: true,
-          headerBackground:  () => <View style={{ flex: 1, backgroundColor: 'transparent' }} />,
-          headerLeft: () => (
-            <Pressable onPress={() => router.back()} hitSlop={12} style={{ marginLeft: 4 }}>
-              <BlurView intensity={70} tint="light" style={styles.glassBtn}>
-                <View style={styles.glassBtnSpecular} />
-                <Ionicons name="arrow-back" size={20} color="rgba(0,0,0,0.75)" />
-              </BlurView>
-            </Pressable>
-          ),
-          headerRight: () => (
-            <Pressable
-              onPress={() => router.push({ pathname: '/edit-profile', params: { id } })}
-              hitSlop={12}
-              style={{ marginRight: 4 }}
-            >
-              <BlurView intensity={70} tint="light" style={styles.glassBtn}>
-                <View style={styles.glassBtnSpecular} />
-                <Ionicons name="create" size={18} color="rgba(0,0,0,0.75)" />
-              </BlurView>
-            </Pressable>
-          ),
-        }}
+        options={{ headerShown: false }}
       />
 
       <View
         style={styles.container}
         onLayout={(e) => onContainerLayout(e.nativeEvent.layout.height)}
       >
+        {/* ── Back button overlay ── */}
+        <Pressable onPress={() => router.back()} hitSlop={16}
+          style={{ position: 'absolute', top: 56, left: 16, zIndex: 99 }}>
+          <BlurView intensity={70} tint="light" style={styles.glassBtn}>
+            <View style={styles.glassBtnSpecular} />
+            <Ionicons name="chevron-back" size={24} color="rgba(0,0,0,0.8)" />
+          </BlurView>
+        </Pressable>
+
+        {/* ── Edit button overlay ── */}
+        <Pressable onPress={() => router.push({ pathname: '/edit-profile', params: { id } })} hitSlop={16}
+          style={{ position: 'absolute', top: 56, right: 16, zIndex: 99 }}>
+          <BlurView intensity={70} tint="light" style={styles.glassBtn}>
+            <View style={styles.glassBtnSpecular} />
+            <Ionicons name="create" size={22} color="rgba(0,0,0,0.8)" />
+          </BlurView>
+        </Pressable>
+
         {/* ── Scene area — background layer ── */}
         <View style={styles.kitchen}>
           <Image
-            source={require('../assets/scenes/room_1_background_3.png')}
+            source={require('../assets/scenes/room_1_background_8.png')}
             style={{ width: '100%', height: '100%' }}
             resizeMode="cover"
           />
@@ -497,7 +493,10 @@ export default function ProfileKitchenScreen() {
                       <View style={{ flexDirection: 'column' }}>
                         <Text style={styles.latestLabel}>LATEST HEIGHT</Text>
                         <Text style={styles.latestHeight}>
-                          {formatMeasurement(latest, primaryUnit)}
+                          {primaryUnit === 'ft' && latest.heightFt != null && latest.heightIn != null
+                            ? <>{latest.heightFt}<Text style={{ fontSize: 20 }}> ft </Text>{latest.heightIn}<Text style={{ fontSize: 20 }}> in</Text></>
+                            : <>{latest.heightCm.toFixed(1)}<Text style={{ fontSize: 20 }}> cm</Text></>
+                          }
                         </Text>
                       </View>
                     </View>
@@ -530,16 +529,16 @@ export default function ProfileKitchenScreen() {
               return (
                 <View style={{ borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, marginBottom: 24, overflow: 'hidden' }}>
                   <View style={{ flexDirection: 'row', padding: 14, alignItems: 'flex-start', minHeight: 100 }}>
-                    <View style={{ width: '45%', paddingRight: 8 }}>
-                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#4A5568', letterSpacing: 0.8, marginBottom: 8 }}>GROWTH PROGRESS</Text>
+                    <View style={{ width: '41%', paddingRight: 8 }}>
+                      <Text style={{ fontSize: 11, color: '#4A5568', letterSpacing: 0, marginBottom: 8, fontFamily: fontsLoaded ? 'Nunito_800ExtraBold' : undefined }}>GROWTH PROGRESS</Text>
                       {delta !== null ? (
-                        <Text style={{ fontSize: 26, fontWeight: '700', color: '#2D3748' }}>
+                        <Text style={{ fontSize: 26, color: '#4A90D9', fontFamily: fontsLoaded ? 'Nunito_600SemiBold' : undefined }}>
                           {delta >= 0 ? '+' : ''}{delta.toFixed(1)} cm
                         </Text>
                       ) : (
-                        <Text style={{ fontSize: 13, color: '#A0AEC0' }}>Not enough data</Text>
+                        <Text style={{ fontSize: 13, color: '#A0AEC0', fontFamily: nunitoFont }}>Not enough data</Text>
                       )}
-                      <Text style={{ fontSize: 11, color: '#A0AEC0', marginTop: 4 }}>last 3 months</Text>
+                      <Text style={{ fontSize: 13, color: '#718096', marginTop: 4, fontFamily: fontsLoaded ? 'Nunito_600SemiBold' : undefined }}>last 3 months</Text>
                     </View>
                     <ThreeMonthGraph measurements={measurements} primaryUnit={primaryUnit} />
                   </View>
@@ -599,6 +598,7 @@ export default function ProfileKitchenScreen() {
 const styles = StyleSheet.create({
   screen:    { flex: 1, backgroundColor: '#E8F4FD' },
   container: { flex: 1 },
+
   glassBtn: {
     flexDirection:     'row',
     alignItems:        'center',
@@ -639,23 +639,23 @@ const styles = StyleSheet.create({
     left:            0,
     top:             0,
     bottom:          '70%',
-    width:           '60%',
+    width:           '100%',
   },
 
   rulerPane: {
     position:        'absolute',
     left:            0,
-    top:             '30%',
-    bottom:          120,                      // COLLAPSED_H
-    width:           '40%',
+    top:             '25%',
+    bottom:          '15%',                    // COLLAPSED_H
+    width:           '45%',
   },
 
   // Avatar overlay — right third of scene, bottom 75% of scene height
   avatarPane: {
     position: 'absolute',
     right:    0,
-    top:      0,
-    bottom:   120,               // COLLAPSED_H
+    top:      '30%',
+    bottom:   '20%',             // COLLAPSED_H + 5%
     width:    '33.33%',
   },
   // Absolutely positioned inside avatarPane — top:25% leaves the shelf clear
@@ -664,7 +664,7 @@ const styles = StyleSheet.create({
     top:      '25%',
     left:     0,
     right:    0,
-    bottom:   '7%',
+    bottom:   0,
   },
 
   // Bottom sheet
@@ -674,7 +674,7 @@ const styles = StyleSheet.create({
     right:                12,
     top:                  0,
     bottom:               0,
-    backgroundColor:      '#fff',
+    backgroundColor:      '#F8F6F1',
     borderTopLeftRadius:  22,
     borderTopRightRadius: 22,
     shadowColor:          '#000',
@@ -688,21 +688,21 @@ const styles = StyleSheet.create({
   handlePill:    { width: 40, height: 4, borderRadius: 2, backgroundColor: '#CBD5E0', marginBottom: 14 },
   latestRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', paddingHorizontal: 4 },
   latestLeft:      { flexDirection: 'row', alignItems: 'flex-start' },
-  latestLabel:  { fontSize: 16, fontWeight: '700', color: '#4A5568', letterSpacing: 0.8 },
-  latestHeight: { fontSize: 30, fontWeight: '600', color: '#2D3748' },
-  latestDate:   { fontSize: 14, color: '#718096' },
-  latestNone:   { fontSize: 15, color: '#A0AEC0' },
+  latestLabel:  { fontSize: 15, color: '#4A5568', letterSpacing: 0.8, fontFamily: 'Nunito_800ExtraBold' },
+  latestHeight: { fontSize: 30, color: '#4A90D9', fontFamily: 'Nunito_600SemiBold' },
+  latestDate:   { fontSize: 14, color: '#718096', fontFamily: 'Nunito_500Medium' },
+  latestNone:   { fontSize: 15, color: '#A0AEC0', fontFamily: 'Nunito_400Regular' },
 
   // Scroll content
   scrollContent:    { paddingHorizontal: 20, paddingTop: 4 },
-  sectionTitle:     { fontSize: 20, fontWeight: '700', color: '#1A202C', marginBottom: 16 },
+  sectionTitle:     { fontSize: 20, fontWeight: '700', color: '#1A202C', marginBottom: 16, fontFamily: 'Nunito_400Regular' },
   sectionTitleGap:  { marginTop: 32 },
-  emptySection:     { color: '#A0AEC0', fontSize: 14, marginBottom: 16 },
+  emptySection:     { color: '#A0AEC0', fontSize: 14, marginBottom: 16, fontFamily: 'Nunito_400Regular' },
   scrollPad:        { height: 48 },
 
   // Chart
   chartOuter:  { marginBottom: 8 },
-  emptyChart:  { color: '#A0AEC0', fontSize: 14, paddingVertical: 32, textAlign: 'center' },
+  emptyChart:  { color: '#A0AEC0', fontSize: 14, paddingVertical: 32, textAlign: 'center', fontFamily: 'Nunito_400Regular' },
 
   // Milestones
   milestoneRow: {
@@ -713,11 +713,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#EDF2F7',
   },
-  milestoneName:  { fontSize: 15, fontWeight: '600', color: '#2D3748', flex: 1 },
+  milestoneName:  { fontSize: 15, fontWeight: '600', color: '#2D3748', flex: 1, fontFamily: 'Nunito_400Regular' },
   milestoneRight: { alignItems: 'flex-end', gap: 2 },
-  milestoneValue: { fontSize: 15, fontWeight: '700', color: '#4A90D9' },
-  milestoneDate:  { fontSize: 12, color: '#A0AEC0' },
+  milestoneValue: { fontSize: 15, fontWeight: '700', color: '#4A90D9', fontFamily: 'Nunito_400Regular' },
+  milestoneDate:  { fontSize: 12, color: '#A0AEC0', fontFamily: 'Nunito_400Regular' },
 
   allMeasurementsBtn:     { marginTop: 24, backgroundColor: '#4A90D9', borderRadius: 12, padding: 16, alignItems: 'center' },
-  allMeasurementsBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  allMeasurementsBtnText: { color: '#fff', fontWeight: '700', fontSize: 16, fontFamily: 'Nunito_400Regular' },
 });

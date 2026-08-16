@@ -10,7 +10,7 @@ interface Props {
 }
 
 // At scale=1 the avatar visually reaches this many cm on the ruler spine.
-const SCALE_REF_CM = 87;
+const SCALE_REF_CM = 100;
 
 export function AvatarSection({ profile, latestHeightCm }: Props) {
   const { width: screenWidth } = useWindowDimensions();

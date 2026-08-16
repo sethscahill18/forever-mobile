@@ -1,6 +1,7 @@
 import { View, StyleSheet, useWindowDimensions, Text } from 'react-native';
 import { BlurView } from 'expo-blur';
 import Svg, { Line as SvgLine, Text as SvgText, G } from 'react-native-svg';
+import { useFonts, Nunito_400Regular, Nunito_600SemiBold } from '@expo-google-fonts/nunito';
 import { Measurement, Profile } from '../../db/schema';
 
 const FILL = { position: 'absolute', top: 0, left: 0, bottom: 0, right: 0 } as const;
@@ -14,7 +15,7 @@ interface Props {
 
 const MAX_CM  = 200;
 const CARD_H  = 60;
-const CARD_GAP = 4;
+const CARD_GAP = 16;
 
 const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -34,8 +35,9 @@ type CardData = { m: Measurement; cardTop: number; tickY: number };
 
 export function RulerSection({ profile, measurements, primaryUnit, paneHeight }: Props) {
   const { width: screenWidth } = useWindowDimensions();
+  const [fontsLoaded] = useFonts({ Nunito_400Regular, Nunito_600SemiBold });
 
-  const paneW = Math.round(screenWidth * 0.4);  // actual pane width (matches rulerPane width:'40%')
+  const paneW = Math.round(screenWidth * 0.45);  // actual pane width (matches rulerPane width:'45%')
   const w     = screenWidth / 3;                // spine positioning anchor (unchanged)
   const h     = paneHeight;
   if (h === 0) return null;
@@ -45,7 +47,7 @@ export function RulerSection({ profile, measurements, primaryUnit, paneHeight }:
   const FLOOR_Y   = h * 0.9;
   const CEIL_Y    = h * 0.05;
   const CARD_LEFT = TICK_X + 16;
-  const CARD_W    = paneW - CARD_LEFT - 2;
+  const CARD_W    = paneW - CARD_LEFT - 18;
 
   function heightToY(cm: number): number {
     return FLOOR_Y - (cm / MAX_CM) * (FLOOR_Y - CEIL_Y);
@@ -163,10 +165,20 @@ export function RulerSection({ profile, measurements, primaryUnit, paneHeight }:
           const label = cmLabel(latestM, primaryUnit);
           return (
             <G>
+              {/* Glow layers — outer to inner */}
               <SvgText x={RULER_X - 4} y={y + 7} fontSize={24} fill="none"
-                stroke="#B3D9FF" strokeWidth={4} textAnchor="end" fontWeight="700">
+                stroke="#B3D9FF" strokeWidth={7} opacity={0.15} textAnchor="end" fontWeight="700">
                 {label}
               </SvgText>
+              <SvgText x={RULER_X - 4} y={y + 7} fontSize={24} fill="none"
+                stroke="#B3D9FF" strokeWidth={4} opacity={0.3} textAnchor="end" fontWeight="700">
+                {label}
+              </SvgText>
+              <SvgText x={RULER_X - 4} y={y + 7} fontSize={24} fill="none"
+                stroke="#B3D9FF" strokeWidth={2} opacity={0.6} textAnchor="end" fontWeight="700">
+                {label}
+              </SvgText>
+              {/* Solid label on top */}
               <SvgText x={RULER_X - 4} y={y + 7} fontSize={24} fill="#4B9EFF"
                 textAnchor="end" fontWeight="700">
                 {label}
@@ -196,8 +208,9 @@ export function RulerSection({ profile, measurements, primaryUnit, paneHeight }:
         >
           {/* Specular highlight — simulates the top-edge glass reflection */}
           <View style={styles.specular} />
-          <Text style={styles.cardTitle} numberOfLines={2}>{m.milestoneName}</Text>
-          <Text style={styles.cardDate}>{formatDate(m.measuredAt)}</Text>
+          <Text style={[styles.cardTitle, fontsLoaded ? { fontFamily: 'Nunito_600SemiBold' } : null]} numberOfLines={2}>{m.milestoneName}</Text>
+          <View style={{ flex: 1 }} />
+          <Text style={[styles.cardDate, fontsLoaded ? { fontFamily: 'Nunito_400Regular' } : null]}>{formatDate(m.measuredAt)}</Text>
         </BlurView>
       ))}
 
@@ -207,12 +220,13 @@ export function RulerSection({ profile, measurements, primaryUnit, paneHeight }:
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius:  14,
-    overflow:      'hidden',
-    padding:       8,
-    justifyContent: 'space-between',
-    borderWidth:   0.5,
-    borderColor:   'rgba(255,255,255,0.6)',
+    borderRadius:   14,
+    overflow:       'hidden',
+    padding:        8,
+    flexDirection:  'column',
+    justifyContent: 'flex-start',
+    borderWidth:    0.5,
+    borderColor:    'rgba(255,255,255,0.6)',
   },
   specular: {
     position:        'absolute',
@@ -224,13 +238,11 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize:   12,
-    fontWeight: '600',
     color:      'rgba(0,0,0,0.80)',
     lineHeight: 15,
   },
   cardDate: {
     fontSize: 11,
-    color:    'rgba(0,0,0,0.50)',
-    flex:     1,
+    color:    '#2E7FD9',
   },
 });
