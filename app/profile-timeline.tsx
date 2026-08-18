@@ -546,32 +546,36 @@ export default function ProfileKitchenScreen() {
               );
             })()}
 
-            <Text style={styles.sectionTitle}>Journey</Text>
-            <HeightChart
-              measurements={measurements}
-              primaryUnit={primaryUnit}
-              onMeasurementPress={(m) =>
-                router.push({ pathname: '/measurement-detail', params: { id: m.id, profileName: profile?.name ?? '' } })
-              }
-            />
-
-            <Text style={[styles.sectionTitle, styles.sectionTitleGap]}>Milestones</Text>
+            <Text style={styles.sectionTitle}>Milestones</Text>
             {milestones.length === 0 ? (
               <Text style={styles.emptySection}>No milestones recorded yet.</Text>
             ) : (
-              milestones.map((m) => (
-                <View key={m.id} style={styles.milestoneRow}>
-                  <Text style={styles.milestoneName}>{m.milestoneName ?? '—'}</Text>
-                  <View style={styles.milestoneRight}>
-                    <Text style={styles.milestoneValue}>
-                      {formatMeasurement(m, primaryUnit)}
-                    </Text>
-                    <Text style={styles.milestoneDate}>
-                      {shortDate(m.measuredAt)}
-                    </Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 8, gap: 12 }}
+              >
+                {milestones.map((m) => (
+                  <View key={m.id} style={styles.milestoneCard}>
+                    {m.milestoneImage ? (
+                      <Image
+                        source={{ uri: m.milestoneImage }}
+                        style={styles.milestoneCardImage}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={styles.milestoneCardImagePlaceholder}>
+                        <Ionicons name="image-outline" size={28} color="#CBD5E0" />
+                      </View>
+                    )}
+                    <View style={styles.milestoneCardBody}>
+                      <Text style={styles.milestoneName} numberOfLines={2}>{m.milestoneName ?? '—'}</Text>
+                      <Text style={styles.milestoneValue}>{formatMeasurement(m, primaryUnit)}</Text>
+                      <Text style={styles.milestoneDate}>{shortDate(m.measuredAt)}</Text>
+                    </View>
                   </View>
-                </View>
-              ))
+                ))}
+              </ScrollView>
             )}
 
             <Pressable
@@ -705,18 +709,32 @@ const styles = StyleSheet.create({
   emptyChart:  { color: '#A0AEC0', fontSize: 14, paddingVertical: 32, textAlign: 'center', fontFamily: 'Nunito_400Regular' },
 
   // Milestones
-  milestoneRow: {
-    flexDirection:     'row',
-    justifyContent:    'space-between',
-    alignItems:        'center',
-    paddingVertical:   14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EDF2F7',
+  milestoneCard: {
+    width:           140,
+    borderRadius:    14,
+    backgroundColor: '#fff',
+    borderWidth:     1,
+    borderColor:     '#E2E8F0',
+    overflow:        'hidden',
   },
-  milestoneName:  { fontSize: 15, fontWeight: '600', color: '#2D3748', flex: 1, fontFamily: 'Nunito_400Regular' },
-  milestoneRight: { alignItems: 'flex-end', gap: 2 },
-  milestoneValue: { fontSize: 15, fontWeight: '700', color: '#4A90D9', fontFamily: 'Nunito_400Regular' },
-  milestoneDate:  { fontSize: 12, color: '#A0AEC0', fontFamily: 'Nunito_400Regular' },
+  milestoneCardImage: {
+    width:  140,
+    height: 110,
+  },
+  milestoneCardImagePlaceholder: {
+    width:           140,
+    height:          110,
+    backgroundColor: '#F7FAFC',
+    alignItems:      'center',
+    justifyContent:  'center',
+  },
+  milestoneCardBody: {
+    padding: 10,
+    gap:     4,
+  },
+  milestoneName:  { fontSize: 13, color: '#2D3748', fontFamily: 'Nunito_600SemiBold' },
+  milestoneValue: { fontSize: 13, fontWeight: '700', color: '#4A90D9', fontFamily: 'Nunito_400Regular' },
+  milestoneDate:  { fontSize: 11, color: '#A0AEC0', fontFamily: 'Nunito_400Regular' },
 
   allMeasurementsBtn:     { marginTop: 24, backgroundColor: '#4A90D9', borderRadius: 12, padding: 16, alignItems: 'center' },
   allMeasurementsBtnText: { color: '#fff', fontWeight: '700', fontSize: 16, fontFamily: 'Nunito_400Regular' },
