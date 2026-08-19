@@ -1,15 +1,23 @@
 import { useCallback, useState } from 'react';
-import { View, Text, FlatList, Pressable, StyleSheet, Image } from 'react-native';
+import { View, Text, FlatList, Pressable, StyleSheet, Image, Modal, SafeAreaView } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
 import { useAuthStore } from '../../src/store/auth.store';
 import { useSettingsStore } from '../../src/store/settings.store';
 import { getProfiles } from '../../src/services/profile.service';
 import { getMeasurements } from '../../src/services/measurement.service';
 import { Profile, Measurement } from '../../src/db/schema';
 import { Ionicons } from '@expo/vector-icons';
-import { formatHeight } from '../../src/utils/weight';
+import { formatHeight, HeightUnit } from '../../src/utils/weight';
+import { useFonts, Nunito_400Regular, Nunito_600SemiBold, Nunito_800ExtraBold } from '@expo-google-fonts/nunito';
+import { useFonts as useDeliusFonts, Delius_400Regular } from '@expo-google-fonts/delius';
 import { AvatarDisplay } from '../../src/components/avatar/AvatarDisplay';
 import { buildAvatarConfig } from '../../src/components/avatar/types';
+
+const PROFILE_ICONS: Record<string, ReturnType<typeof require>> = {
+  male_teen_blue: require('../../assets/avatar/complete/profile_icons/male_teen_blue_profile_pic.png'),
+};
 
 type ProfileCard = { profile: Profile; latest: Measurement | null };
 
@@ -33,9 +41,19 @@ function formatMeasurement(m: Measurement, unit: 'cm' | 'ft'): string {
 }
 
 export default function ProfilesScreen() {
-  const userId      = useAuthStore((s) => s.userId);
-  const primaryUnit = useSettingsStore((s) => s.primaryUnit);
-  const [cards, setCards] = useState<ProfileCard[]>([]);
+  const userId         = useAuthStore((s) => s.userId);
+  const primaryUnit    = useSettingsStore((s) => s.primaryUnit);
+  const setPrimaryUnit = useSettingsStore((s) => s.setPrimaryUnit);
+  const insets         = useSafeAreaInsets();
+  const [cards, setCards]           = useState<ProfileCard[]>([]);
+  const [settingsVisible, setSettingsVisible] = useState(false);
+  const [nunitoLoaded]  = useFonts({ Nunito_400Regular, Nunito_600SemiBold, Nunito_800ExtraBold });
+  const [deliusLoaded]  = useDeliusFonts({ Delius_400Regular });
+
+  const UNIT_OPTIONS: { label: string; value: HeightUnit }[] = [
+    { label: 'Centimetres (cm)', value: 'cm' },
+    { label: 'Feet & Inches',    value: 'ft' },
+  ];
 
   useFocusEffect(
     useCallback(() => {
@@ -57,90 +75,191 @@ export default function ProfilesScreen() {
       <FlatList
         data={cards}
         keyExtractor={(c) => c.profile.id}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, { paddingTop: insets.top + 66 }]}
         ListEmptyComponent={
           <Text style={styles.empty}>No profiles yet. Tap + to create one.</Text>
         }
         renderItem={({ item: { profile, latest } }) => (
           <Pressable
-            style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+            style={({ pressed }) => [styles.cardWrapper, pressed && styles.cardPressed]}
             onPress={() => router.push({ pathname: '/profile-timeline', params: { id: profile.id } })}
           >
-            <View style={styles.avatar}>
-              {profile.profileImage ? (
-                <Image source={{ uri: profile.profileImage }} style={styles.avatarImg} />
-              ) : (
-                <AvatarDisplay config={buildAvatarConfig(profile)} size={56} compact />
-              )}
-            </View>
+            <BlurView intensity={70} tint="light" style={styles.card}>
+              {/* Specular highlight */}
+              <View style={styles.specular} />
 
-            <View style={styles.info}>
-              <Text style={styles.name}>{profile.name}</Text>
-              {latest ? (
-                <Text style={styles.sub}>
-                  {formatMeasurement(latest, primaryUnit)}
-                  <Text style={styles.dot}> · </Text>
-                  {timeAgo(latest.measuredAt)}
-                </Text>
-              ) : (
-                <Text style={styles.subFaded}>No measurements yet</Text>
-              )}
-            </View>
+              <View style={styles.avatar}>
+                {profile.profileImage ? (
+                  <Image source={{ uri: profile.profileImage }} style={styles.avatarImg} />
+                ) : profile.avatarId && PROFILE_ICONS[profile.avatarId] ? (
+                  <Image source={PROFILE_ICONS[profile.avatarId]} style={styles.avatarImg} />
+                ) : (
+                  <AvatarDisplay config={buildAvatarConfig(profile)} size={56} compact />
+                )}
+              </View>
 
-            <Ionicons name="chevron-forward" size={18} color="#CBD5E0" />
+              <View style={styles.info}>
+                <Text style={{ fontSize: 17, color: '#1A202C', marginBottom: 4, fontFamily: deliusLoaded ? 'Delius_400Regular' : undefined }}>{profile.name}</Text>
+                {latest ? (
+                  <Text style={{ fontSize: 14, color: '#4A5568', fontFamily: nunitoLoaded ? 'Nunito_400Regular' : undefined }}>
+                    {formatMeasurement(latest, primaryUnit)}
+                    <Text style={styles.dot}> · </Text>
+                    {timeAgo(latest.measuredAt)}
+                  </Text>
+                ) : (
+                  <Text style={{ fontSize: 14, color: 'rgba(0,0,0,0.4)', fontFamily: nunitoLoaded ? 'Nunito_400Regular' : undefined }}>No measurements yet</Text>
+                )}
+              </View>
+
+              <Ionicons name="chevron-forward" size={18} color="rgba(0,0,0,0.3)" />
+            </BlurView>
           </Pressable>
         )}
       />
 
+      {/* Cog button — top right */}
+      <Pressable
+        style={[styles.cogBtn, { top: insets.top + 12 }]}
+        onPress={() => setSettingsVisible(true)}
+        hitSlop={12}
+      >
+        <BlurView intensity={70} tint="light" style={styles.cogInner}>
+          <View style={styles.specular} />
+          <Ionicons name="settings-outline" size={26} color="rgba(0,0,0,0.7)" />
+        </BlurView>
+      </Pressable>
+
+      {/* FAB — add profile */}
       <Pressable
         style={styles.fab}
         onPress={() => router.push('/(tabs)/create-profile')}
       >
-        <Ionicons name="add" size={28} color="#fff" />
+        <BlurView intensity={70} tint="light" style={styles.fabInner}>
+          <View style={styles.specular} />
+          <Ionicons name="add" size={36} color="rgba(0,0,0,0.7)" />
+        </BlurView>
       </Pressable>
+
+      {/* Settings modal */}
+      <Modal
+        visible={settingsVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setSettingsVisible(false)}
+      >
+        <SafeAreaView style={styles.modalSafe}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Settings</Text>
+            <Pressable onPress={() => setSettingsVisible(false)} hitSlop={10}>
+              <Ionicons name="close" size={24} color="#718096" />
+            </Pressable>
+          </View>
+
+          <View style={styles.settingsSection}>
+            <Text style={styles.settingsSectionHeader}>MEASUREMENTS</Text>
+            <View style={styles.settingsCard}>
+              <Text style={styles.settingsRowLabel}>Primary Unit</Text>
+              <Text style={styles.settingsRowDesc}>Display and enter measurements in:</Text>
+              <View style={styles.segmented}>
+                {UNIT_OPTIONS.map((opt) => (
+                  <Pressable
+                    key={opt.value}
+                    style={[styles.seg, primaryUnit === opt.value && styles.segActive]}
+                    onPress={() => setPrimaryUnit(opt.value)}
+                  >
+                    <Text style={[styles.segText, primaryUnit === opt.value && styles.segTextActive]}>
+                      {opt.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          </View>
+        </SafeAreaView>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F7FAFC' },
+  container: { flex: 1, backgroundColor: '#D9D4C7' },
   list:      { padding: 16, paddingBottom: 100 },
-  empty:     { textAlign: 'center', color: '#A0AEC0', marginTop: 60, fontSize: 15 },
+  empty:     { textAlign: 'center', color: '#fff', marginTop: 60, fontSize: 15 },
+
+  cardWrapper: { marginBottom: 12 },
+  cardPressed: { opacity: 0.85 },
 
   card: {
-    flexDirection:   'row',
-    alignItems:      'center',
-    backgroundColor: '#fff',
-    borderRadius:    16,
-    padding:         16,
-    marginBottom:    12,
-    gap:             14,
-    shadowColor:     '#000',
-    shadowOpacity:   0.05,
-    shadowRadius:    8,
-    elevation:       2,
+    flexDirection:  'row',
+    alignItems:     'center',
+    borderRadius:   20,
+    overflow:       'hidden',
+    padding:        16,
+    gap:            14,
+    borderWidth:    0.5,
+    borderColor:    'rgba(255,255,255,0.6)',
   },
-  cardPressed: { opacity: 0.85 },
+  specular: {
+    position:        'absolute',
+    top:             0,
+    left:            0,
+    right:           0,
+    height:          '50%',
+    backgroundColor: 'rgba(255,255,255,0.22)',
+  },
 
   avatar: {
     width: 56, height: 56, borderRadius: 28,
-    backgroundColor: '#EDF2F7',
+    backgroundColor: 'rgba(255,255,255,0.3)',
     alignItems: 'center', justifyContent: 'center',
     overflow: 'hidden',
   },
   avatarImg: { width: 56, height: 56, borderRadius: 28 },
 
   info:     { flex: 1 },
-  name:     { fontSize: 17, fontWeight: '700', color: '#1A202C', marginBottom: 4 },
-  sub:      { fontSize: 14, color: '#4A5568' },
-  subFaded: { fontSize: 14, color: '#A0AEC0' },
-  dot:      { color: '#CBD5E0' },
+  dot:      { color: 'rgba(0,0,0,0.25)' },
 
   fab: {
     position: 'absolute', bottom: 28, right: 24,
     width: 56, height: 56, borderRadius: 28,
-    backgroundColor: '#4A90D9',
-    alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6, elevation: 6,
+    overflow: 'hidden',
+    shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6, elevation: 6,
   },
+  fabInner: {
+    width: 56, height: 56,
+    borderRadius: 28,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.6)',
+  },
+
+  cogBtn: {
+    position: 'absolute', right: 16,
+    width: 38, height: 38, borderRadius: 19,
+    overflow: 'hidden',
+    shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, elevation: 4,
+  },
+  cogInner: {
+    width: 38, height: 38, borderRadius: 19,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.6)',
+  },
+
+  modalSafe:    { flex: 1, backgroundColor: '#F8F6F1' },
+  modalHeader:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
+  modalTitle:   { fontSize: 20, fontWeight: '700', color: '#1A202C', fontFamily: 'Nunito_800ExtraBold' },
+
+  settingsSection:       { marginTop: 24, paddingHorizontal: 16 },
+  settingsSectionHeader: { fontSize: 12, color: '#A0AEC0', letterSpacing: 0.8, marginBottom: 8, textTransform: 'uppercase', fontFamily: 'Nunito_800ExtraBold' },
+  settingsCard: {
+    backgroundColor: '#fff', borderRadius: 12, padding: 16,
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
+  },
+  settingsRowLabel: { fontSize: 16, color: '#2D3748', marginBottom: 4, fontFamily: 'Nunito_600SemiBold' },
+  settingsRowDesc:  { fontSize: 13, color: '#718096', marginBottom: 14, fontFamily: 'Nunito_400Regular' },
+  segmented:  { flexDirection: 'column', gap: 8 },
+  seg:        { padding: 12, borderRadius: 10, borderWidth: 1.5, borderColor: '#E2E8F0', backgroundColor: '#F7FAFC', alignItems: 'center' },
+  segActive:  { backgroundColor: '#4A90D9', borderColor: '#4A90D9' },
+  segText:    { fontSize: 15, color: '#4A5568', fontFamily: 'Nunito_400Regular' },
+  segTextActive: { color: '#fff' },
 });
