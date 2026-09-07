@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Alert, View, StyleSheet, Pressable } from 'react-native';
 import { Stack, router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,11 +7,15 @@ import { updateProfile, deleteProfile } from '../src/services/profile.service';
 import { db } from '../src/db/database';
 import { profiles, Profile } from '../src/db/schema';
 import { eq } from 'drizzle-orm';
+import { useAppTheme, useAppThemeStore } from '../src/store/appTheme.store';
+import { ThemeColors } from '../src/theme/tokens';
 
 export default function EditProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(false);
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   useFocusEffect(
     useCallback(() => {
@@ -29,6 +33,9 @@ export default function EditProfileScreen() {
     setLoading(true);
     try {
       await updateProfile(id, profileFormToDb(values));
+      if (values.setAsActiveTheme) {
+        useAppThemeStore.getState().setActiveTheme(values.colourPalette);
+      }
       router.back();
     } catch {
       Alert.alert('Error', 'Could not update profile');
@@ -75,12 +82,12 @@ export default function EditProfileScreen() {
           headerShown:      true,
           title:            'Edit Profile',
           headerBackTitle:  'Back',
-          headerStyle:      { backgroundColor: '#fff' },
-          headerTitleStyle: { fontWeight: '700', color: '#1A202C' },
-          headerTintColor:  '#4A90D9',
+          headerStyle:      { backgroundColor: colors.surface },
+          headerTitleStyle: { fontWeight: '700', color: colors.textPrimary },
+          headerTintColor:  colors.primary,
           headerRight: () => (
             <Pressable onPress={handleMenuPress} hitSlop={12} style={{ paddingRight: 4 }}>
-              <Ionicons name="ellipsis-horizontal" size={22} color="#4A5568" />
+              <Ionicons name="ellipsis-horizontal" size={22} color={colors.textSecondary} />
             </Pressable>
           ),
         }}
@@ -96,6 +103,8 @@ export default function EditProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F7FAFC' },
-});
+function makeStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+  });
+}

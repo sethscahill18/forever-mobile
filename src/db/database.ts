@@ -22,7 +22,7 @@ export async function initDatabase() {
       user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       name TEXT NOT NULL,
       avatar TEXT NOT NULL DEFAULT 'child',
-      theme TEXT NOT NULL DEFAULT 'red',
+      colour_palette TEXT NOT NULL DEFAULT 'water',
       door_style TEXT NOT NULL DEFAULT 'style_1',
       door_colour TEXT NOT NULL DEFAULT 'black',
       handle_style TEXT NOT NULL DEFAULT 'handle_style_1',
@@ -78,5 +78,22 @@ export async function initDatabase() {
   } catch (_) {}
   try {
     await sqlite.execAsync(`ALTER TABLE profiles ADD COLUMN gender TEXT NOT NULL DEFAULT 'male';`);
+  } catch (_) {}
+
+  // Rename `theme` -> `colour_palette` (upgrading installs only — no-ops harmlessly on
+  // fresh installs where the table is already created with `colour_palette`).
+  try {
+    await sqlite.execAsync(`ALTER TABLE profiles RENAME COLUMN theme TO colour_palette;`);
+  } catch (_) {}
+
+  // Remap legacy red/blue/green values to the new water/forest/space theme names.
+  // Each UPDATE only matches its specific old literal, so re-running this on every
+  // app start is a safe no-op once already migrated.
+  try {
+    await sqlite.execAsync(`
+      UPDATE profiles SET colour_palette = 'water'  WHERE colour_palette = 'blue';
+      UPDATE profiles SET colour_palette = 'forest' WHERE colour_palette = 'green';
+      UPDATE profiles SET colour_palette = 'space'  WHERE colour_palette = 'red';
+    `);
   } catch (_) {}
 }

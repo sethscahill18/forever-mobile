@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet, FlatList } from 'react-native';
 import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { useActiveProfileStore } from '../../store/activeProfile.store';
@@ -6,6 +6,8 @@ import { useAuthStore } from '../../store/auth.store';
 import { getProfiles } from '../../services/profile.service';
 import { Profile } from '../../db/schema';
 import { useFocusEffect } from 'expo-router';
+import { useAppTheme } from '../../store/appTheme.store';
+import { ThemeColors } from '../../theme/tokens';
 
 export function ProfileSwitcher() {
   const profile  = useActiveProfileStore((s) => s.profile);
@@ -13,6 +15,8 @@ export function ProfileSwitcher() {
   const userId   = useAuthStore((s) => s.userId);
   const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
   const sheetRef = useRef<BottomSheet>(null);
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   useFocusEffect(
     useCallback(() => {
@@ -67,14 +71,16 @@ export function ProfileSwitcher() {
   );
 }
 
-const styles = StyleSheet.create({
-  button:     { flexDirection: 'row', alignItems: 'center', gap: 4, paddingRight: 16 },
-  name:       { fontSize: 16, fontWeight: '600', color: '#1A202C', maxWidth: 120 },
-  chevron:    { fontSize: 14, color: '#718096' },
-  sheet:      { flex: 1, padding: 20 },
-  sheetTitle: { fontSize: 18, fontWeight: '700', marginBottom: 16, color: '#1A202C' },
-  row:        { paddingVertical: 14, paddingHorizontal: 8, flexDirection: 'row', justifyContent: 'space-between', borderRadius: 8 },
-  rowActive:  { backgroundColor: '#EBF4FF' },
-  rowText:    { fontSize: 16, color: '#2D3748' },
-  tick:       { fontSize: 16, color: '#4A90D9' },
-});
+function makeStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    button:     { flexDirection: 'row', alignItems: 'center', gap: 4, paddingRight: 16 },
+    name:       { fontSize: 16, fontWeight: '600', color: colors.textPrimary, maxWidth: 120 },
+    chevron:    { fontSize: 14, color: colors.textMuted },
+    sheet:      { flex: 1, padding: 20, backgroundColor: colors.surface },
+    sheetTitle: { fontSize: 18, fontWeight: '700', marginBottom: 16, color: colors.textPrimary },
+    row:        { paddingVertical: 14, paddingHorizontal: 8, flexDirection: 'row', justifyContent: 'space-between', borderRadius: 8 },
+    rowActive:  { backgroundColor: colors.surfaceAlt },
+    rowText:    { fontSize: 16, color: colors.textSecondary },
+    tick:       { fontSize: 16, color: colors.primary },
+  });
+}

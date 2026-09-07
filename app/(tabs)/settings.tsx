@@ -1,6 +1,9 @@
+import { useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useSettingsStore } from '../../src/store/settings.store';
 import { HeightUnit } from '../../src/utils/weight';
+import { useAppTheme } from '../../src/store/appTheme.store';
+import { ThemeColors } from '../../src/theme/tokens';
 
 const UNIT_OPTIONS: { label: string; value: HeightUnit }[] = [
   { label: 'Centimetres (cm)', value: 'cm' },
@@ -10,6 +13,8 @@ const UNIT_OPTIONS: { label: string; value: HeightUnit }[] = [
 export default function SettingsScreen() {
   const primaryUnit    = useSettingsStore((s) => s.primaryUnit);
   const setPrimaryUnit = useSettingsStore((s) => s.setPrimaryUnit);
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   return (
     <View style={styles.screen}>
@@ -37,28 +42,30 @@ export default function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen:        { flex: 1, backgroundColor: '#F7FAFC' },
-  section:       { marginTop: 24, paddingHorizontal: 16 },
-  sectionHeader: { fontSize: 12, fontWeight: '600', color: '#A0AEC0', letterSpacing: 0.8, marginBottom: 8, textTransform: 'uppercase' },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  rowLabel:    { fontSize: 16, fontWeight: '600', color: '#2D3748', marginBottom: 4 },
-  rowDesc:     { fontSize: 13, color: '#718096', marginBottom: 14 },
-  segmented:   { flexDirection: 'column', gap: 8 },
-  seg: {
-    padding: 12, borderRadius: 10,
-    borderWidth: 1.5, borderColor: '#E2E8F0',
-    backgroundColor: '#F7FAFC', alignItems: 'center',
-  },
-  segActive:        { backgroundColor: '#4A90D9', borderColor: '#4A90D9' },
-  segText:          { fontSize: 15, fontWeight: '500', color: '#4A5568' },
-  segTextActive:    { color: '#fff' },
-});
+function makeStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    screen:        { flex: 1, backgroundColor: colors.background },
+    section:       { marginTop: 24, paddingHorizontal: 16 },
+    sectionHeader: { fontSize: 12, fontWeight: '600', color: colors.textFaint, letterSpacing: 0.8, marginBottom: 8, textTransform: 'uppercase' },
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      padding: 16,
+      shadowColor: '#000',
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    rowLabel:    { fontSize: 16, fontWeight: '600', color: colors.textPrimary, marginBottom: 4 },
+    rowDesc:     { fontSize: 13, color: colors.textMuted, marginBottom: 14 },
+    segmented:   { flexDirection: 'column', gap: 8 },
+    seg: {
+      padding: 12, borderRadius: 10,
+      borderWidth: 1.5, borderColor: colors.border,
+      backgroundColor: colors.background, alignItems: 'center',
+    },
+    segActive:        { backgroundColor: colors.primary, borderColor: colors.primary },
+    segText:          { fontSize: 15, fontWeight: '500', color: colors.textSecondary },
+    segTextActive:    { color: colors.onPrimary },
+  });
+}

@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useCallback } from 'react';
+import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, Pressable, ActivityIndicator,
   Animated, Alert, TextInput, Keyboard, ScrollView,
@@ -15,6 +15,8 @@ import { saveMeasurement } from '../../src/services/measurement.service';
 import { getProfiles } from '../../src/services/profile.service';
 import { Profile } from '../../src/db/schema';
 import { toCm, formatHeight } from '../../src/utils/weight';
+import { useAppTheme } from '../../src/store/appTheme.store';
+import { ThemeColors } from '../../src/theme/tokens';
 
 type Mode = 'hidden' | 'pick-profile';
 
@@ -37,6 +39,8 @@ export default function MeasurementsScreen() {
   const unit   = useSettingsStore((s) => s.primaryUnit);
 
   const { status, valueCm, saveRequestedCm, clearSaveRequest, error, startScan, disconnect } = useBLEMeasure();
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const [mode,               setMode]               = useState<Mode>('hidden');
   const [saved,              setSaved]              = useState(false);
@@ -214,7 +218,7 @@ export default function MeasurementsScreen() {
       <Pressable style={styles.body} onPress={() => Keyboard.dismiss()} accessible={false}>
         {!hasProfiles ? (
           <View style={styles.noProfileBox}>
-            <Ionicons name="person-outline" size={48} color="#CBD5E0" />
+            <Ionicons name="person-outline" size={48} color={colors.borderStrong} />
             <Text style={styles.noProfileTitle}>No profiles yet</Text>
             <Text style={styles.noProfileDesc}>
               Create a profile first so measurements can be saved against it.
@@ -229,7 +233,7 @@ export default function MeasurementsScreen() {
             <View style={styles.bleContent}>
               {(status === 'scanning' || status === 'connecting') && (
                 <>
-                  <ActivityIndicator size="large" color="#4A90D9" />
+                  <ActivityIndicator size="large" color={colors.primary} />
                   <Text style={styles.scanLabel}>
                     {status === 'scanning' ? 'Searching for ForeverMeasure…' : 'Connecting…'}
                   </Text>
@@ -251,7 +255,7 @@ export default function MeasurementsScreen() {
               )}
               {(status === 'error' || status === 'idle') && (
                 <>
-                  <Ionicons name="bluetooth-outline" size={48} color="#FC8181" />
+                  <Ionicons name="bluetooth-outline" size={48} color={colors.danger} />
                   {status === 'error' && <Text style={styles.errorText}>{error}</Text>}
                   <Pressable style={styles.retryBtn} onPress={startScan}>
                     <Text style={styles.retryText}>Retry</Text>
@@ -296,12 +300,12 @@ export default function MeasurementsScreen() {
           <View style={styles.panelInner}>
             <View style={styles.panelHeader}>
               <Pressable onPress={backFromPickProfile} hitSlop={10} style={styles.backBtn}>
-                <Ionicons name="chevron-back" size={20} color="#2B6CB0" />
+                <Ionicons name="chevron-back" size={20} color={colors.primary} />
                 <Text style={styles.backText}>Back</Text>
               </Pressable>
               <Text style={styles.panelTitle}>Select Profile</Text>
               <Pressable onPress={closePanel} hitSlop={10}>
-                <Ionicons name="close" size={22} color="#718096" />
+                <Ionicons name="close" size={22} color={colors.textMuted} />
               </Pressable>
             </View>
             {saved && <Text style={styles.savedBanner}>Saved!</Text>}
@@ -316,7 +320,7 @@ export default function MeasurementsScreen() {
                     <Text style={styles.pickAvatarText}>{p.name.charAt(0).toUpperCase()}</Text>
                   </View>
                   <Text style={styles.pickName}>{p.name}</Text>
-                  <Ionicons name="chevron-forward" size={16} color="#CBD5E0" />
+                  <Ionicons name="chevron-forward" size={16} color={colors.borderStrong} />
                 </Pressable>
               ))}
             </ScrollView>
@@ -341,7 +345,7 @@ export default function MeasurementsScreen() {
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Manual Entry</Text>
                 <Pressable onPress={closeManualModal} hitSlop={10}>
-                  <Ionicons name="close" size={24} color="#718096" />
+                  <Ionicons name="close" size={24} color={colors.textMuted} />
                 </Pressable>
               </View>
 
@@ -384,7 +388,7 @@ export default function MeasurementsScreen() {
                 onPress={() => { Keyboard.dismiss(); setShowDatePicker(true); }}
               >
                 <Text style={styles.dateBtnText}>{formatDateLabel(manualDate)}</Text>
-                <Ionicons name="chevron-forward" size={16} color="#718096" />
+                <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
               </Pressable>
 
               <View style={styles.modalActions}>
@@ -412,90 +416,92 @@ export default function MeasurementsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#F7FAFC' },
-  body:   { flex: 1 },
+function makeStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    screen: { flex: 1, backgroundColor: colors.background },
+    body:   { flex: 1 },
 
-  noProfileBox:     { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, gap: 12 },
-  noProfileTitle:   { fontSize: 18, fontWeight: '700', color: '#2D3748', textAlign: 'center' },
-  noProfileDesc:    { fontSize: 14, color: '#718096', textAlign: 'center', lineHeight: 20 },
-  noProfileBtn:     { marginTop: 8, backgroundColor: '#4A90D9', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10 },
-  noProfileBtnText: { color: '#fff', fontWeight: '600', fontSize: 15 },
+    noProfileBox:     { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, gap: 12 },
+    noProfileTitle:   { fontSize: 18, fontWeight: '700', color: colors.textSecondary, textAlign: 'center' },
+    noProfileDesc:    { fontSize: 14, color: colors.textMuted, textAlign: 'center', lineHeight: 20 },
+    noProfileBtn:     { marginTop: 8, backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10 },
+    noProfileBtnText: { color: colors.onPrimary, fontWeight: '600', fontSize: 15 },
 
-  // BLE status display
-  bleContent: {
-    flex: 1, alignItems: 'center', justifyContent: 'center',
-    gap: 16, paddingHorizontal: 32,
-  },
-  connectedHeader:  { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  scanLabel:        { fontSize: 16, color: '#4A90D9', fontWeight: '500', textAlign: 'center' },
-  errorText:        { fontSize: 14, color: '#E53E3E', textAlign: 'center', lineHeight: 20 },
-  retryBtn:         { paddingHorizontal: 24, paddingVertical: 10, borderRadius: 10, borderWidth: 1.5, borderColor: '#4A90D9' },
-  retryText:        { color: '#4A90D9', fontWeight: '600', fontSize: 15 },
-  deviceName:       { fontSize: 16, fontWeight: '600', color: '#2D3748' },
-  dot:              { width: 8, height: 8, borderRadius: 4, backgroundColor: '#48BB78' },
-  readingPrimary:   { fontSize: 48, fontWeight: '700', color: '#2B6CB0', textAlign: 'center' },
-  readingSecondary: { fontSize: 18, fontWeight: '500', color: '#A0AEC0', textAlign: 'center' },
-  savedBanner:      { textAlign: 'center', color: '#48BB78', fontWeight: '600' },
+    // BLE status display
+    bleContent: {
+      flex: 1, alignItems: 'center', justifyContent: 'center',
+      gap: 16, paddingHorizontal: 32,
+    },
+    connectedHeader:  { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    scanLabel:        { fontSize: 16, color: colors.primary, fontWeight: '500', textAlign: 'center' },
+    errorText:        { fontSize: 14, color: colors.danger, textAlign: 'center', lineHeight: 20 },
+    retryBtn:         { paddingHorizontal: 24, paddingVertical: 10, borderRadius: 10, borderWidth: 1.5, borderColor: colors.primary },
+    retryText:        { color: colors.primary, fontWeight: '600', fontSize: 15 },
+    deviceName:       { fontSize: 16, fontWeight: '600', color: colors.textSecondary },
+    dot:              { width: 8, height: 8, borderRadius: 4, backgroundColor: '#48BB78' },
+    readingPrimary:   { fontSize: 48, fontWeight: '700', color: colors.primary, textAlign: 'center' },
+    readingSecondary: { fontSize: 18, fontWeight: '500', color: colors.textFaint, textAlign: 'center' },
+    savedBanner:      { textAlign: 'center', color: '#48BB78', fontWeight: '600' },
 
-  // Bottom actions
-  bottomActions:  { paddingHorizontal: 24, paddingBottom: 40, gap: 12 },
-  disconnectLink: { alignItems: 'center', paddingVertical: 8 },
-  disconnectText: { color: '#A0AEC0', fontSize: 14 },
+    // Bottom actions
+    bottomActions:  { paddingHorizontal: 24, paddingBottom: 40, gap: 12 },
+    disconnectLink: { alignItems: 'center', paddingVertical: 8 },
+    disconnectText: { color: colors.textFaint, fontSize: 14 },
 
-  // Pick-profile panel
-  panel: {
-    position: 'absolute', left: 0, right: 0,
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    overflow: 'hidden',
-    shadowColor: '#000', shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.1, shadowRadius: 8, elevation: 12,
-  },
-  panelInner:  { flex: 1, paddingHorizontal: 24, paddingTop: 20, paddingBottom: 20 },
-  panelTitle:  { fontSize: 17, fontWeight: '700', color: '#1A202C' },
-  panelHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  backBtn:     { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  backText:    { color: '#2B6CB0', fontSize: 15, fontWeight: '500' },
-  profileScroll:  { flex: 1, marginTop: 4 },
-  profilePickRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#EDF2F7',
-  },
-  pickAvatar:     { width: 38, height: 38, borderRadius: 19, backgroundColor: '#4A90D9', alignItems: 'center', justifyContent: 'center' },
-  pickAvatarText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  pickName:       { flex: 1, fontSize: 15, fontWeight: '500', color: '#2D3748' },
+    // Pick-profile panel
+    panel: {
+      position: 'absolute', left: 0, right: 0,
+      backgroundColor: colors.surface,
+      borderTopLeftRadius: 20, borderTopRightRadius: 20,
+      overflow: 'hidden',
+      shadowColor: '#000', shadowOffset: { width: 0, height: -3 },
+      shadowOpacity: 0.1, shadowRadius: 8, elevation: 12,
+    },
+    panelInner:  { flex: 1, paddingHorizontal: 24, paddingTop: 20, paddingBottom: 20 },
+    panelTitle:  { fontSize: 17, fontWeight: '700', color: colors.textPrimary },
+    panelHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+    backBtn:     { flexDirection: 'row', alignItems: 'center', gap: 2 },
+    backText:    { color: colors.primary, fontSize: 15, fontWeight: '500' },
+    profileScroll:  { flex: 1, marginTop: 4 },
+    profilePickRow: {
+      flexDirection: 'row', alignItems: 'center', gap: 12,
+      paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border,
+    },
+    pickAvatar:     { width: 38, height: 38, borderRadius: 19, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+    pickAvatarText: { color: colors.onPrimary, fontWeight: '700', fontSize: 16 },
+    pickName:       { flex: 1, fontSize: 15, fontWeight: '500', color: colors.textSecondary },
 
-  // Manual entry modal
-  modalSafe:    { flex: 1, backgroundColor: '#F7FAFC' },
-  modalFlex:    { flex: 1 },
-  modalInner:   { flex: 1, paddingHorizontal: 24, paddingTop: 24, paddingBottom: 32 },
-  modalHeader:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  modalTitle:   { fontSize: 20, fontWeight: '700', color: '#1A202C' },
-  modalActions: { flexDirection: 'row', gap: 12, marginTop: 'auto', paddingTop: 16 },
+    // Manual entry modal
+    modalSafe:    { flex: 1, backgroundColor: colors.background },
+    modalFlex:    { flex: 1 },
+    modalInner:   { flex: 1, paddingHorizontal: 24, paddingTop: 24, paddingBottom: 32 },
+    modalHeader:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+    modalTitle:   { fontSize: 20, fontWeight: '700', color: colors.textPrimary },
+    modalActions: { flexDirection: 'row', gap: 12, marginTop: 'auto', paddingTop: 16 },
 
-  // Shared form styles
-  fieldLabel: { fontSize: 13, fontWeight: '600', color: '#4A5568', marginBottom: 6, marginTop: 20 },
-  inputRow:   { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  input: {
-    backgroundColor: '#fff', borderWidth: 1, borderColor: '#E2E8F0',
-    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 12, fontSize: 16,
-  },
-  inputFlex:  { flex: 1 },
-  inputSmall: { width: 70 },
-  unitLabel:  { fontSize: 15, color: '#4A5568', fontWeight: '500' },
-  dateBtn: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    backgroundColor: '#fff', borderWidth: 1, borderColor: '#E2E8F0',
-    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 12,
-  },
-  dateBtnText: { fontSize: 15, color: '#2D3748' },
+    // Shared form styles
+    fieldLabel: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: 6, marginTop: 20 },
+    inputRow:   { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    input: {
+      backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
+      borderRadius: 10, paddingHorizontal: 12, paddingVertical: 12, fontSize: 16, color: colors.textPrimary,
+    },
+    inputFlex:  { flex: 1 },
+    inputSmall: { width: 70 },
+    unitLabel:  { fontSize: 15, color: colors.textSecondary, fontWeight: '500' },
+    dateBtn: {
+      flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+      backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
+      borderRadius: 10, paddingHorizontal: 12, paddingVertical: 12,
+    },
+    dateBtnText: { fontSize: 15, color: colors.textSecondary },
 
-  btnSecondary:     { height: 52, borderRadius: 12, borderWidth: 1.5, borderColor: '#CBD5E0', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
-  btnSecondaryFlex: { flex: 1, height: 52, borderRadius: 12, borderWidth: 1.5, borderColor: '#CBD5E0', alignItems: 'center', justifyContent: 'center' },
-  btnSecondaryText: { fontSize: 15, color: '#4A5568', fontWeight: '500' },
-  btnPrimary:       { height: 52, borderRadius: 12, backgroundColor: '#2B6CB0', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
-  btnPrimaryFlex:   { flex: 1, height: 52, borderRadius: 12, backgroundColor: '#2B6CB0', alignItems: 'center', justifyContent: 'center' },
-  btnPrimaryText:   { fontSize: 16, color: '#fff', fontWeight: '600' },
-  btnDisabled:      { opacity: 0.4 },
-});
+    btnSecondary:     { height: 52, borderRadius: 12, borderWidth: 1.5, borderColor: colors.borderStrong, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
+    btnSecondaryFlex: { flex: 1, height: 52, borderRadius: 12, borderWidth: 1.5, borderColor: colors.borderStrong, alignItems: 'center', justifyContent: 'center' },
+    btnSecondaryText: { fontSize: 15, color: colors.textSecondary, fontWeight: '500' },
+    btnPrimary:       { height: 52, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
+    btnPrimaryFlex:   { flex: 1, height: 52, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+    btnPrimaryText:   { fontSize: 16, color: colors.onPrimary, fontWeight: '600' },
+    btnDisabled:      { opacity: 0.4 },
+  });
+}

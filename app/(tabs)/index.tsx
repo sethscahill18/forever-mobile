@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { View, Text, FlatList, Image, StyleSheet } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,8 @@ import { Profile, Measurement } from '../../src/db/schema';
 import { formatHeight } from '../../src/utils/weight';
 import { AvatarDisplay } from '../../src/components/avatar/AvatarDisplay';
 import { buildAvatarConfig } from '../../src/components/avatar/types';
+import { useAppTheme } from '../../src/store/appTheme.store';
+import { ThemeColors } from '../../src/theme/tokens';
 
 type MilestoneFeedItem = { profile: Profile; measurement: Measurement };
 
@@ -25,7 +27,9 @@ function formatDate(ts: number): string {
   });
 }
 
-function MilestoneCard({ item, primaryUnit }: { item: MilestoneFeedItem; primaryUnit: 'cm' | 'ft' }) {
+function MilestoneCard({ item, primaryUnit, colors, styles }: {
+  item: MilestoneFeedItem; primaryUnit: 'cm' | 'ft'; colors: ThemeColors; styles: Styles;
+}) {
   const { profile, measurement } = item;
   return (
     <View style={styles.card}>
@@ -40,7 +44,7 @@ function MilestoneCard({ item, primaryUnit }: { item: MilestoneFeedItem; primary
         <View style={styles.headerText}>
           <Text style={styles.profileName}>{profile.name}</Text>
           <View style={styles.milestoneRow}>
-            <Ionicons name="star" size={13} color="#D69E2E" style={styles.starIcon} />
+            <Ionicons name="star" size={13} color={colors.accentGold} style={styles.starIcon} />
             <Text style={styles.milestoneName}>{measurement.milestoneName}</Text>
           </View>
         </View>
@@ -67,6 +71,8 @@ export default function HomeScreen() {
   const userId      = useAuthStore((s) => s.userId);
   const primaryUnit = useSettingsStore((s) => s.primaryUnit);
   const [feed, setFeed] = useState<MilestoneFeedItem[]>([]);
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   useFocusEffect(
     useCallback(() => {
@@ -93,7 +99,7 @@ export default function HomeScreen() {
         contentContainerStyle={styles.list}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Ionicons name="star-outline" size={48} color="#CBD5E0" />
+            <Ionicons name="star-outline" size={48} color={colors.borderStrong} />
             <Text style={styles.emptyTitle}>No milestones yet</Text>
             <Text style={styles.emptySub}>
               Open a measurement and mark it as a milestone to see it here.
@@ -101,69 +107,73 @@ export default function HomeScreen() {
           </View>
         }
         renderItem={({ item }) => (
-          <MilestoneCard item={item} primaryUnit={primaryUnit} />
+          <MilestoneCard item={item} primaryUnit={primaryUnit} colors={colors} styles={styles} />
         )}
       />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F7FAFC' },
-  list:      { padding: 16, paddingBottom: 32 },
+type Styles = ReturnType<typeof makeStyles>;
 
-  card: {
-    backgroundColor: '#fff',
-    borderRadius:    16,
-    marginBottom:    14,
-    overflow:        'hidden',
-    shadowColor:     '#000',
-    shadowOpacity:   0.05,
-    shadowRadius:    8,
-    elevation:       2,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           12,
-    padding:       14,
-    paddingBottom: 10,
-  },
+function makeStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    list:      { padding: 16, paddingBottom: 32 },
 
-  avatar: {
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: '#EDF2F7',
-    alignItems: 'center', justifyContent: 'center',
-    overflow: 'hidden',
-    flexShrink: 0,
-  },
-  avatarImg: { width: 44, height: 44, borderRadius: 22 },
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius:    16,
+      marginBottom:    14,
+      overflow:        'hidden',
+      shadowColor:     '#000',
+      shadowOpacity:   0.05,
+      shadowRadius:    8,
+      elevation:       2,
+    },
+    cardHeader: {
+      flexDirection: 'row',
+      alignItems:    'center',
+      gap:           12,
+      padding:       14,
+      paddingBottom: 10,
+    },
 
-  headerText: { flex: 1 },
-  profileName: { fontSize: 15, fontWeight: '700', color: '#1A202C', marginBottom: 2 },
-  milestoneRow: { flexDirection: 'row', alignItems: 'center' },
-  starIcon: { marginRight: 4 },
-  milestoneName: { fontSize: 13, color: '#744210', fontWeight: '600' },
+    avatar: {
+      width: 44, height: 44, borderRadius: 22,
+      backgroundColor: colors.surfaceAlt,
+      alignItems: 'center', justifyContent: 'center',
+      overflow: 'hidden',
+      flexShrink: 0,
+    },
+    avatarImg: { width: 44, height: 44, borderRadius: 22 },
 
-  milestoneImage: {
-    width: '100%',
-    height: 200,
-  },
+    headerText: { flex: 1 },
+    profileName: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, marginBottom: 2 },
+    milestoneRow: { flexDirection: 'row', alignItems: 'center' },
+    starIcon: { marginRight: 4 },
+    milestoneName: { fontSize: 13, color: colors.accentGoldDark, fontWeight: '600' },
 
-  footerText: {
-    fontSize: 13,
-    color: '#4A5568',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  dot: { color: '#CBD5E0' },
+    milestoneImage: {
+      width: '100%',
+      height: 200,
+    },
 
-  emptyContainer: {
-    alignItems: 'center',
-    paddingTop: 80,
-    paddingHorizontal: 32,
-    gap: 10,
-  },
-  emptyTitle: { fontSize: 17, fontWeight: '700', color: '#4A5568', marginTop: 8 },
-  emptySub:   { fontSize: 14, color: '#A0AEC0', textAlign: 'center', lineHeight: 20 },
-});
+    footerText: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+    },
+    dot: { color: colors.borderStrong },
+
+    emptyContainer: {
+      alignItems: 'center',
+      paddingTop: 80,
+      paddingHorizontal: 32,
+      gap: 10,
+    },
+    emptyTitle: { fontSize: 17, fontWeight: '700', color: colors.textSecondary, marginTop: 8 },
+    emptySub:   { fontSize: 14, color: colors.textFaint, textAlign: 'center', lineHeight: 20 },
+  });
+}

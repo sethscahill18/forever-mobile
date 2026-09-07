@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { View, Text, FlatList, Pressable, StyleSheet, Image, Modal, SafeAreaView } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,6 +14,8 @@ import { useFonts, Nunito_400Regular, Nunito_600SemiBold, Nunito_800ExtraBold } 
 import { useFonts as useDeliusFonts, Delius_400Regular } from '@expo-google-fonts/delius';
 import { AvatarDisplay } from '../../src/components/avatar/AvatarDisplay';
 import { buildAvatarConfig } from '../../src/components/avatar/types';
+import { useAppTheme } from '../../src/store/appTheme.store';
+import { ThemeColors } from '../../src/theme/tokens';
 
 const PROFILE_ICONS: Record<string, ReturnType<typeof require>> = {
   male_teen_blue: require('../../assets/avatar/complete/profile_icons/male_teen_blue_profile_pic.png'),
@@ -49,6 +51,11 @@ export default function ProfilesScreen() {
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [nunitoLoaded]  = useFonts({ Nunito_400Regular, Nunito_600SemiBold, Nunito_800ExtraBold });
   const [deliusLoaded]  = useDeliusFonts({ Delius_400Regular });
+  const { colors, theme } = useAppTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const glassTint = theme === 'space' ? 'dark' : 'light';
+  const glassIconStrong = theme === 'space' ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.7)';
+  const glassIconSoft   = theme === 'space' ? 'rgba(255,255,255,0.5)'  : 'rgba(0,0,0,0.3)';
 
   const UNIT_OPTIONS: { label: string; value: HeightUnit }[] = [
     { label: 'Centimetres (cm)', value: 'cm' },
@@ -84,7 +91,7 @@ export default function ProfilesScreen() {
             style={({ pressed }) => [styles.cardWrapper, pressed && styles.cardPressed]}
             onPress={() => router.push({ pathname: '/profile-timeline', params: { id: profile.id } })}
           >
-            <BlurView intensity={70} tint="light" style={styles.card}>
+            <BlurView intensity={70} tint={glassTint} style={styles.card}>
               {/* Specular highlight */}
               <View style={styles.specular} />
 
@@ -99,19 +106,19 @@ export default function ProfilesScreen() {
               </View>
 
               <View style={styles.info}>
-                <Text style={{ fontSize: 17, color: '#1A202C', marginBottom: 4, fontFamily: deliusLoaded ? 'Delius_400Regular' : undefined }}>{profile.name}</Text>
+                <Text style={{ fontSize: 17, color: colors.textPrimary, marginBottom: 4, fontFamily: deliusLoaded ? 'Delius_400Regular' : undefined }}>{profile.name}</Text>
                 {latest ? (
-                  <Text style={{ fontSize: 14, color: '#4A5568', fontFamily: nunitoLoaded ? 'Nunito_400Regular' : undefined }}>
+                  <Text style={{ fontSize: 14, color: colors.textSecondary, fontFamily: nunitoLoaded ? 'Nunito_400Regular' : undefined }}>
                     {formatMeasurement(latest, primaryUnit)}
                     <Text style={styles.dot}> · </Text>
                     {timeAgo(latest.measuredAt)}
                   </Text>
                 ) : (
-                  <Text style={{ fontSize: 14, color: 'rgba(0,0,0,0.4)', fontFamily: nunitoLoaded ? 'Nunito_400Regular' : undefined }}>No measurements yet</Text>
+                  <Text style={{ fontSize: 14, color: glassIconSoft, fontFamily: nunitoLoaded ? 'Nunito_400Regular' : undefined }}>No measurements yet</Text>
                 )}
               </View>
 
-              <Ionicons name="chevron-forward" size={18} color="rgba(0,0,0,0.3)" />
+              <Ionicons name="chevron-forward" size={18} color={glassIconSoft} />
             </BlurView>
           </Pressable>
         )}
@@ -123,9 +130,9 @@ export default function ProfilesScreen() {
         onPress={() => setSettingsVisible(true)}
         hitSlop={12}
       >
-        <BlurView intensity={70} tint="light" style={styles.cogInner}>
+        <BlurView intensity={70} tint={glassTint} style={styles.cogInner}>
           <View style={styles.specular} />
-          <Ionicons name="settings-outline" size={26} color="rgba(0,0,0,0.7)" />
+          <Ionicons name="settings-outline" size={26} color={glassIconStrong} />
         </BlurView>
       </Pressable>
 
@@ -134,9 +141,9 @@ export default function ProfilesScreen() {
         style={styles.fab}
         onPress={() => router.push('/(tabs)/create-profile')}
       >
-        <BlurView intensity={70} tint="light" style={styles.fabInner}>
+        <BlurView intensity={70} tint={glassTint} style={styles.fabInner}>
           <View style={styles.specular} />
-          <Ionicons name="add" size={36} color="rgba(0,0,0,0.7)" />
+          <Ionicons name="add" size={36} color={glassIconStrong} />
         </BlurView>
       </Pressable>
 
@@ -151,7 +158,7 @@ export default function ProfilesScreen() {
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Settings</Text>
             <Pressable onPress={() => setSettingsVisible(false)} hitSlop={10}>
-              <Ionicons name="close" size={24} color="#718096" />
+              <Ionicons name="close" size={24} color={colors.textMuted} />
             </Pressable>
           </View>
 
@@ -181,85 +188,87 @@ export default function ProfilesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#D9D4C7' },
-  list:      { padding: 16, paddingBottom: 100 },
-  empty:     { textAlign: 'center', color: '#fff', marginTop: 60, fontSize: 15 },
+function makeStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.backgroundPaper },
+    list:      { padding: 16, paddingBottom: 100 },
+    empty:     { textAlign: 'center', color: colors.onPrimary, marginTop: 60, fontSize: 15 },
 
-  cardWrapper: { marginBottom: 12 },
-  cardPressed: { opacity: 0.85 },
+    cardWrapper: { marginBottom: 12 },
+    cardPressed: { opacity: 0.85 },
 
-  card: {
-    flexDirection:  'row',
-    alignItems:     'center',
-    borderRadius:   20,
-    overflow:       'hidden',
-    padding:        16,
-    gap:            14,
-    borderWidth:    0.5,
-    borderColor:    'rgba(255,255,255,0.6)',
-  },
-  specular: {
-    position:        'absolute',
-    top:             0,
-    left:            0,
-    right:           0,
-    height:          '50%',
-    backgroundColor: 'rgba(255,255,255,0.22)',
-  },
+    card: {
+      flexDirection:  'row',
+      alignItems:     'center',
+      borderRadius:   20,
+      overflow:       'hidden',
+      padding:        16,
+      gap:            14,
+      borderWidth:    0.5,
+      borderColor:    'rgba(255,255,255,0.6)',
+    },
+    specular: {
+      position:        'absolute',
+      top:             0,
+      left:            0,
+      right:           0,
+      height:          '50%',
+      backgroundColor: 'rgba(255,255,255,0.22)',
+    },
 
-  avatar: {
-    width: 56, height: 56, borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    alignItems: 'center', justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  avatarImg: { width: 56, height: 56, borderRadius: 28 },
+    avatar: {
+      width: 56, height: 56, borderRadius: 28,
+      backgroundColor: 'rgba(255,255,255,0.3)',
+      alignItems: 'center', justifyContent: 'center',
+      overflow: 'hidden',
+    },
+    avatarImg: { width: 56, height: 56, borderRadius: 28 },
 
-  info:     { flex: 1 },
-  dot:      { color: 'rgba(0,0,0,0.25)' },
+    info:     { flex: 1 },
+    dot:      { color: colors.textFaint },
 
-  fab: {
-    position: 'absolute', bottom: 28, right: 24,
-    width: 56, height: 56, borderRadius: 28,
-    overflow: 'hidden',
-    shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6, elevation: 6,
-  },
-  fabInner: {
-    width: 56, height: 56,
-    borderRadius: 28,
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.6)',
-  },
+    fab: {
+      position: 'absolute', bottom: 28, right: 24,
+      width: 56, height: 56, borderRadius: 28,
+      overflow: 'hidden',
+      shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6, elevation: 6,
+    },
+    fabInner: {
+      width: 56, height: 56,
+      borderRadius: 28,
+      alignItems: 'center', justifyContent: 'center',
+      borderWidth: 0.5,
+      borderColor: 'rgba(255,255,255,0.6)',
+    },
 
-  cogBtn: {
-    position: 'absolute', right: 16,
-    width: 38, height: 38, borderRadius: 19,
-    overflow: 'hidden',
-    shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, elevation: 4,
-  },
-  cogInner: {
-    width: 38, height: 38, borderRadius: 19,
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.6)',
-  },
+    cogBtn: {
+      position: 'absolute', right: 16,
+      width: 38, height: 38, borderRadius: 19,
+      overflow: 'hidden',
+      shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, elevation: 4,
+    },
+    cogInner: {
+      width: 38, height: 38, borderRadius: 19,
+      alignItems: 'center', justifyContent: 'center',
+      borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.6)',
+    },
 
-  modalSafe:    { flex: 1, backgroundColor: '#F8F6F1' },
-  modalHeader:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
-  modalTitle:   { fontSize: 20, fontWeight: '700', color: '#1A202C', fontFamily: 'Nunito_800ExtraBold' },
+    modalSafe:    { flex: 1, backgroundColor: colors.backgroundPaper },
+    modalHeader:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
+    modalTitle:   { fontSize: 20, fontWeight: '700', color: colors.textPrimary, fontFamily: 'Nunito_800ExtraBold' },
 
-  settingsSection:       { marginTop: 24, paddingHorizontal: 16 },
-  settingsSectionHeader: { fontSize: 12, color: '#A0AEC0', letterSpacing: 0.8, marginBottom: 8, textTransform: 'uppercase', fontFamily: 'Nunito_800ExtraBold' },
-  settingsCard: {
-    backgroundColor: '#fff', borderRadius: 12, padding: 16,
-    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
-  },
-  settingsRowLabel: { fontSize: 16, color: '#2D3748', marginBottom: 4, fontFamily: 'Nunito_600SemiBold' },
-  settingsRowDesc:  { fontSize: 13, color: '#718096', marginBottom: 14, fontFamily: 'Nunito_400Regular' },
-  segmented:  { flexDirection: 'column', gap: 8 },
-  seg:        { padding: 12, borderRadius: 10, borderWidth: 1.5, borderColor: '#E2E8F0', backgroundColor: '#F7FAFC', alignItems: 'center' },
-  segActive:  { backgroundColor: '#4A90D9', borderColor: '#4A90D9' },
-  segText:    { fontSize: 15, color: '#4A5568', fontFamily: 'Nunito_400Regular' },
-  segTextActive: { color: '#fff' },
-});
+    settingsSection:       { marginTop: 24, paddingHorizontal: 16 },
+    settingsSectionHeader: { fontSize: 12, color: colors.textFaint, letterSpacing: 0.8, marginBottom: 8, textTransform: 'uppercase', fontFamily: 'Nunito_800ExtraBold' },
+    settingsCard: {
+      backgroundColor: colors.surface, borderRadius: 12, padding: 16,
+      shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
+    },
+    settingsRowLabel: { fontSize: 16, color: colors.textPrimary, marginBottom: 4, fontFamily: 'Nunito_600SemiBold' },
+    settingsRowDesc:  { fontSize: 13, color: colors.textMuted, marginBottom: 14, fontFamily: 'Nunito_400Regular' },
+    segmented:  { flexDirection: 'column', gap: 8 },
+    seg:        { padding: 12, borderRadius: 10, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.background, alignItems: 'center' },
+    segActive:  { backgroundColor: colors.primary, borderColor: colors.primary },
+    segText:    { fontSize: 15, color: colors.textSecondary, fontFamily: 'Nunito_400Regular' },
+    segTextActive: { color: colors.onPrimary },
+  });
+}

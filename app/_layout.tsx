@@ -7,16 +7,18 @@ import { useAuthStore } from '../src/store/auth.store';
 import { users } from '../src/db/schema';
 import { initActiveProfile } from '../src/services/profile.service';
 import { useSettingsStore } from '../src/store/settings.store';
+import { useAppThemeStore } from '../src/store/appTheme.store';
 
 export default function RootLayout() {
   const [ready, setReady] = useState(false);
   const userId = useAuthStore((s) => s.userId);
   const loadSettings = useSettingsStore((s) => s.loadSettings);
+  const loadActiveTheme = useAppThemeStore((s) => s.loadActiveTheme);
 
   useEffect(() => {
     async function init() {
       await initDatabase();
-      await loadSettings();
+      await Promise.all([loadSettings(), loadActiveTheme()]);
       setReady(true);
     }
     init().catch(console.error);

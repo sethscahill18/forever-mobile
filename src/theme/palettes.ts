@@ -1,0 +1,73 @@
+import { ThemeColors, ThemeName } from './tokens';
+
+export const WATER: ThemeColors = {
+  background: '#EAF6FA',
+  backgroundPaper: '#F4FAF8',
+  sceneBackground: '#DFF1F7',
+  surface: '#FFFFFF',
+  surfaceAlt: '#E1F1F6',
+  border: '#D2E9EF',
+  borderStrong: '#A6D3DF',
+  textPrimary: '#113247',
+  textSecondary: '#3C6577',
+  textMuted: '#6D8FA0',
+  textFaint: '#9FBBC6',
+  primary: '#1478A0',
+  onPrimary: '#FFFFFF',
+  accentGold: '#E2A93B',
+  accentGoldDark: '#A97A1F',
+  danger: '#E5484D',
+  sceneWall: '#DCEEF5',
+  markLine: '#6E5A3A',
+  markLabel: '#4A3B26',
+};
+
+export const FOREST: ThemeColors = {
+  background: '#F1F7ED',
+  backgroundPaper: '#F7F4EB',
+  sceneBackground: '#E7F1DC',
+  surface: '#FFFFFF',
+  surfaceAlt: '#E7F0DC',
+  border: '#DAE8CA',
+  borderStrong: '#B7D298',
+  textPrimary: '#223318',
+  textSecondary: '#47592F',
+  textMuted: '#708363',
+  textFaint: '#A2AF8E',
+  primary: '#3F7A2E',
+  onPrimary: '#FFFFFF',
+  accentGold: '#D6A324',
+  accentGoldDark: '#9C7515',
+  danger: '#E5484D',
+  sceneWall: '#E1EFD3',
+  markLine: '#6E5A3A',
+  markLabel: '#4A3B26',
+};
+
+export const SPACE: ThemeColors = {
+  background: '#10132A',
+  backgroundPaper: '#1B1E3D',
+  sceneBackground: '#171A38',
+  surface: '#1D2044',
+  surfaceAlt: '#262A54',
+  border: '#363B6E',
+  borderStrong: '#4D5390',
+  textPrimary: '#F2F1FA',
+  textSecondary: '#C7C7E9',
+  textMuted: '#9192C0',
+  textFaint: '#666B9C',
+  primary: '#6F5AE0',
+  onPrimary: '#FFFFFF',
+  accentGold: '#F3C94D',
+  accentGoldDark: '#C79A2E',
+  danger: '#FF6B6B',
+  sceneWall: '#232752',
+  markLine: '#B7A15C',
+  markLabel: '#E5D8A6',
+};
+
+export const PALETTES: Record<ThemeName, ThemeColors> = {
+  water: WATER,
+  forest: FOREST,
+  space: SPACE,
+};

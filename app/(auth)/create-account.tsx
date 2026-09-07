@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   View, Text, TextInput, Pressable, StyleSheet,
   KeyboardAvoidingView, Platform, Alert,
@@ -9,6 +9,8 @@ import { createAccount } from '../../src/services/auth.service';
 import { useAuthStore } from '../../src/store/auth.store';
 import { db } from '../../src/db/database';
 import { users } from '../../src/db/schema';
+import { useAppTheme } from '../../src/store/appTheme.store';
+import { ThemeColors } from '../../src/theme/tokens';
 
 export default function CreateAccountScreen() {
   const [name,     setName]     = useState('');
@@ -17,6 +19,8 @@ export default function CreateAccountScreen() {
   const [showPw,   setShowPw]   = useState(false);
   const [loading,  setLoading]  = useState(false);
   const setAuth = useAuthStore((s) => s.setAuth);
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   async function handleCreate() {
     if (!name.trim())                  return Alert.alert('Name required');
@@ -65,7 +69,7 @@ export default function CreateAccountScreen() {
             secureTextEntry={!showPw}
           />
           <Pressable onPress={() => setShowPw((v) => !v)} style={styles.eyeBtn} hitSlop={8}>
-            <Ionicons name={showPw ? 'eye-off-outline' : 'eye-outline'} size={22} color="#718096" />
+            <Ionicons name={showPw ? 'eye-off-outline' : 'eye-outline'} size={22} color={colors.textMuted} />
           </Pressable>
         </View>
         <View style={styles.inputRow}>
@@ -92,35 +96,38 @@ export default function CreateAccountScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F7FAFC' },
-  inner:     { flex: 1, justifyContent: 'center', padding: 32 },
-  title:     { fontSize: 28, fontWeight: '700', color: '#1A202C', marginBottom: 6 },
-  subtitle:  { fontSize: 15, color: '#718096', marginBottom: 32 },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 10,
-    marginBottom: 14,
-  },
-  inputFlex: {
-    flex: 1,
-    padding: 14,
-    fontSize: 16,
-  },
-  eyeBtn: {
-    paddingHorizontal: 12,
-  },
-  button: {
-    backgroundColor: '#4A90D9',
-    borderRadius: 10,
-    padding: 16,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-});
+function makeStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    inner:     { flex: 1, justifyContent: 'center', padding: 32 },
+    title:     { fontSize: 28, fontWeight: '700', color: colors.textPrimary, marginBottom: 6 },
+    subtitle:  { fontSize: 15, color: colors.textMuted, marginBottom: 32 },
+    inputRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 10,
+      marginBottom: 14,
+    },
+    inputFlex: {
+      flex: 1,
+      padding: 14,
+      fontSize: 16,
+      color: colors.textPrimary,
+    },
+    eyeBtn: {
+      paddingHorizontal: 12,
+    },
+    button: {
+      backgroundColor: colors.primary,
+      borderRadius: 10,
+      padding: 16,
+      alignItems: 'center',
+      marginTop: 8,
+    },
+    buttonDisabled: { opacity: 0.6 },
+    buttonText: { color: colors.onPrimary, fontSize: 16, fontWeight: '600' },
+  });
+}

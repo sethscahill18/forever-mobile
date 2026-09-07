@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Alert, View, Text, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { ProfileForm, ProfileFormValues, profileFormToDb } from '../../src/components/shared/ProfileForm';
@@ -7,11 +7,15 @@ import { db } from '../../src/db/database';
 import { profiles } from '../../src/db/schema';
 import { eq } from 'drizzle-orm';
 import { Profile } from '../../src/db/schema';
+import { useAppTheme, useAppThemeStore } from '../../src/store/appTheme.store';
+import { ThemeColors } from '../../src/theme/tokens';
 
 export default function EditProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(false);
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   useFocusEffect(
     useCallback(() => {
@@ -29,6 +33,9 @@ export default function EditProfileScreen() {
     setLoading(true);
     try {
       await updateProfile(id, profileFormToDb(values));
+      if (values.setAsActiveTheme) {
+        useAppThemeStore.getState().setActiveTheme(values.colourPalette);
+      }
       router.back();
     } catch {
       Alert.alert('Error', 'Could not update profile');
@@ -53,7 +60,9 @@ export default function EditProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F7FAFC' },
-  header:    { fontSize: 22, fontWeight: '700', color: '#1A202C', padding: 20, paddingBottom: 0 },
-});
+function makeStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    header:    { fontSize: 22, fontWeight: '700', color: colors.textPrimary, padding: 20, paddingBottom: 0 },
+  });
+}

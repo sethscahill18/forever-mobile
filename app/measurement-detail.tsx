@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   View, Text, Switch, TextInput, Pressable, StyleSheet,
   ScrollView, Alert, Image, ActivityIndicator,
@@ -13,6 +13,8 @@ import { measurements, Measurement } from '../src/db/schema';
 import { updateMeasurement } from '../src/services/measurement.service';
 import { useSettingsStore } from '../src/store/settings.store';
 import { formatHeight } from '../src/utils/weight';
+import { useAppTheme } from '../src/store/appTheme.store';
+import { ThemeColors } from '../src/theme/tokens';
 
 function formatDate(ts: number) {
   return new Date(ts).toLocaleDateString('en-GB', {
@@ -29,6 +31,8 @@ function formatMeasurement(m: Measurement, unit: 'cm' | 'ft') {
 export default function MeasurementDetailScreen() {
   const { id, profileName } = useLocalSearchParams<{ id: string; profileName: string }>();
   const primaryUnit = useSettingsStore((s) => s.primaryUnit);
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const [measurement, setMeasurement] = useState<Measurement | null>(null);
   const [isMilestone, setIsMilestone]   = useState(false);
@@ -102,8 +106,8 @@ export default function MeasurementDetailScreen() {
   if (!measurement) {
     return (
       <View style={styles.loading}>
-        <Stack.Screen options={{ headerShown: true, title: 'Measurement', headerTintColor: '#4A90D9' }} />
-        <ActivityIndicator color="#4A90D9" />
+        <Stack.Screen options={{ headerShown: true, title: 'Measurement', headerTintColor: colors.primary }} />
+        <ActivityIndicator color={colors.primary} />
       </View>
     );
   }
@@ -115,17 +119,17 @@ export default function MeasurementDetailScreen() {
           headerShown:      true,
           title:            'Measurement',
           headerBackTitle:  'Back',
-          headerStyle:      { backgroundColor: '#fff' },
-          headerTitleStyle: { fontWeight: '700', color: '#1A202C' },
-          headerTintColor:  '#4A90D9',
+          headerStyle:      { backgroundColor: colors.surface },
+          headerTitleStyle: { fontWeight: '700', color: colors.textPrimary },
+          headerTintColor:  colors.primary,
         }}
       />
 
       {/* ── Read-only info ── */}
       <View style={styles.card}>
-        <InfoRow label="Profile" value={profileName ?? '—'} />
-        <InfoRow label="Height"  value={formatMeasurement(measurement, primaryUnit)} />
-        <InfoRow label="Date"    value={formatDate(measurement.measuredAt)} last />
+        <InfoRow label="Profile" value={profileName ?? '—'} styles={styles} />
+        <InfoRow label="Height"  value={formatMeasurement(measurement, primaryUnit)} styles={styles} />
+        <InfoRow label="Date"    value={formatDate(measurement.measuredAt)} last styles={styles} />
       </View>
 
       {/* ── Milestone editor ── */}
@@ -135,7 +139,7 @@ export default function MeasurementDetailScreen() {
           <Switch
             value={isMilestone}
             onValueChange={handleToggleMilestone}
-            trackColor={{ true: '#4A90D9' }}
+            trackColor={{ true: colors.primary }}
           />
         </View>
 
@@ -186,7 +190,7 @@ export default function MeasurementDetailScreen() {
   );
 }
 
-function InfoRow({ label, value, last }: { label: string; value: string; last?: boolean }) {
+function InfoRow({ label, value, last, styles }: { label: string; value: string; last?: boolean; styles: Styles }) {
   return (
     <View style={[styles.infoRow, !last && styles.infoRowBorder]}>
       <Text style={styles.infoLabel}>{label}</Text>
@@ -195,65 +199,70 @@ function InfoRow({ label, value, last }: { label: string; value: string; last?: 
   );
 }
 
-const styles = StyleSheet.create({
-  screen:  { flex: 1, backgroundColor: '#F7FAFC' },
-  content: { padding: 20, paddingBottom: 48 },
-  loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+type Styles = ReturnType<typeof makeStyles>;
 
-  card: {
-    backgroundColor:  '#fff',
-    borderRadius:     14,
-    marginBottom:     16,
-    shadowColor:      '#000',
-    shadowOpacity:    0.05,
-    shadowRadius:     6,
-    elevation:        2,
-    overflow:         'hidden',
-  },
+function makeStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    screen:  { flex: 1, backgroundColor: colors.background },
+    content: { padding: 20, paddingBottom: 48 },
+    loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
-  // Info rows
-  infoRow:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14 },
-  infoRowBorder: { borderBottomWidth: 1, borderBottomColor: '#EDF2F7' },
-  infoLabel:     { fontSize: 15, color: '#718096', fontWeight: '500' },
-  infoValue:     { fontSize: 15, color: '#1A202C', fontWeight: '600' },
+    card: {
+      backgroundColor:  colors.surface,
+      borderRadius:     14,
+      marginBottom:     16,
+      shadowColor:      '#000',
+      shadowOpacity:    0.05,
+      shadowRadius:     6,
+      elevation:        2,
+      overflow:         'hidden',
+    },
 
-  // Milestone toggle
-  milestoneToggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12 },
-  fieldLabel:         { fontSize: 15, color: '#2D3748', fontWeight: '600', paddingHorizontal: 16, paddingTop: 14, paddingBottom: 8 },
-  divider:            { height: 1, backgroundColor: '#EDF2F7', marginHorizontal: 16 },
+    // Info rows
+    infoRow:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14 },
+    infoRowBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
+    infoLabel:     { fontSize: 15, color: colors.textMuted, fontWeight: '500' },
+    infoValue:     { fontSize: 15, color: colors.textPrimary, fontWeight: '600' },
 
-  // Text input
-  textInput: {
-    marginHorizontal: 16,
-    marginBottom:     14,
-    borderWidth:      1,
-    borderColor:      '#E2E8F0',
-    borderRadius:     10,
-    padding:          12,
-    fontSize:         15,
-    backgroundColor:  '#F7FAFC',
-  },
+    // Milestone toggle
+    milestoneToggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12 },
+    fieldLabel:         { fontSize: 15, color: colors.textSecondary, fontWeight: '600', paddingHorizontal: 16, paddingTop: 14, paddingBottom: 8 },
+    divider:            { height: 1, backgroundColor: colors.border, marginHorizontal: 16 },
 
-  // Image picker
-  imagePicker: {
-    marginHorizontal: 16,
-    marginBottom:     14,
-    borderWidth:      1,
-    borderColor:      '#4A90D9',
-    borderRadius:     10,
-    borderStyle:      'dashed',
-    padding:          16,
-    alignItems:       'center',
-  },
-  imagePickerText: { color: '#4A90D9', fontWeight: '600', fontSize: 15 },
+    // Text input
+    textInput: {
+      marginHorizontal: 16,
+      marginBottom:     14,
+      borderWidth:      1,
+      borderColor:      colors.border,
+      borderRadius:     10,
+      padding:          12,
+      fontSize:         15,
+      backgroundColor:  colors.background,
+      color:            colors.textPrimary,
+    },
 
-  imageContainer: { marginHorizontal: 16, marginBottom: 14, gap: 10 },
-  thumbnail:      { width: '100%', height: 200, borderRadius: 10, backgroundColor: '#EDF2F7' },
-  changeImageBtn: { alignSelf: 'flex-start', paddingVertical: 6, paddingHorizontal: 14, borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0' },
-  changeImageText: { color: '#4A5568', fontSize: 13, fontWeight: '500' },
+    // Image picker
+    imagePicker: {
+      marginHorizontal: 16,
+      marginBottom:     14,
+      borderWidth:      1,
+      borderColor:      colors.primary,
+      borderRadius:     10,
+      borderStyle:      'dashed',
+      padding:          16,
+      alignItems:       'center',
+    },
+    imagePickerText: { color: colors.primary, fontWeight: '600', fontSize: 15 },
 
-  // Save button
-  saveBtn:         { backgroundColor: '#4A90D9', borderRadius: 12, padding: 16, alignItems: 'center' },
-  saveBtnDisabled: { opacity: 0.6 },
-  saveText:        { color: '#fff', fontWeight: '700', fontSize: 16 },
-});
+    imageContainer: { marginHorizontal: 16, marginBottom: 14, gap: 10 },
+    thumbnail:      { width: '100%', height: 200, borderRadius: 10, backgroundColor: colors.surfaceAlt },
+    changeImageBtn: { alignSelf: 'flex-start', paddingVertical: 6, paddingHorizontal: 14, borderRadius: 8, borderWidth: 1, borderColor: colors.border },
+    changeImageText: { color: colors.textSecondary, fontSize: 13, fontWeight: '500' },
+
+    // Save button
+    saveBtn:         { backgroundColor: colors.primary, borderRadius: 12, padding: 16, alignItems: 'center' },
+    saveBtnDisabled: { opacity: 0.6 },
+    saveText:        { color: colors.onPrimary, fontWeight: '700', fontSize: 16 },
+  });
+}

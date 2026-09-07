@@ -4,6 +4,8 @@ import { Svg, Rect, Line as SvgLine, Text as SvgText, Path, G } from 'react-nati
 import { Profile, Measurement } from '../../db/schema';
 import { useSettingsStore } from '../../store/settings.store';
 import { formatHeight } from '../../utils/weight';
+import { PALETTES } from '../../theme/palettes';
+import { ThemeName } from '../../theme/tokens';
 
 // SVG layer imports
 import WallDecorSvg    from '../../../assets/kitchen/wall_decor.svg';
@@ -32,10 +34,10 @@ const MARK_X2      = 92;
 const MARK_LABEL_X = 62;
 
 // ─── Colour maps ──────────────────────────────────────────────────────────────
-const WALL_COLOURS: Record<string, string> = {
-  red:   '#FEE2E2',
-  blue:  '#DBEAFE',
-  green: '#D1FAE5',
+const WALL_COLOURS: Record<ThemeName, string> = {
+  water:  PALETTES.water.sceneWall,
+  forest: PALETTES.forest.sceneWall,
+  space:  PALETTES.space.sceneWall,
 };
 
 const DOOR_COLOURS: Record<string, string> = {
@@ -106,7 +108,8 @@ export default function KitchenScene({ profile, measurements }: KitchenSceneProp
   const primaryUnit = useSettingsStore((s) => s.primaryUnit);
   const [size, setSize] = React.useState<{ w: number; h: number } | null>(null);
 
-  const wallFill = WALL_COLOURS[profile.theme]      ?? WALL_COLOURS.red;
+  const palette  = PALETTES[(profile.colourPalette as ThemeName)] ?? PALETTES.water;
+  const wallFill = WALL_COLOURS[(profile.colourPalette as ThemeName)] ?? WALL_COLOURS.water;
   const doorFill = DOOR_COLOURS[profile.doorColour] ?? DOOR_COLOURS.black;
 
   const DoorSvg      = DOOR_SVGS[profile.doorStyle       as keyof typeof DOOR_SVGS]      ?? DoorStyle1Svg;
@@ -156,8 +159,8 @@ export default function KitchenScene({ profile, measurements }: KitchenSceneProp
 
                     const isLatest    = m.id === newestId;
                     const isMilestone = m.isMilestone === 1;
-                    const lineColour  = isMilestone ? '#D69E2E' : '#8B6914';
-                    const labelColour = isMilestone ? '#C07700' : '#5D4037';
+                    const lineColour  = isMilestone ? palette.accentGold : palette.markLine;
+                    const labelColour = isMilestone ? palette.accentGoldDark : palette.markLabel;
                     const x2          = isMilestone ? MARK_X2 + 8 : MARK_X2;
                     const label       = primaryUnit === 'ft' && m.heightFt != null && m.heightIn != null
                       ? `${m.heightFt}'${m.heightIn}"`
@@ -170,7 +173,7 @@ export default function KitchenScene({ profile, measurements }: KitchenSceneProp
                           stroke={lineColour} strokeWidth={isLatest ? 2.5 : 1.5}
                         />
                         {isMilestone && (
-                          <Path d={starPath(x2 + 7, y, 5, 2.2)} fill="#D69E2E" />
+                          <Path d={starPath(x2 + 7, y, 5, 2.2)} fill={palette.accentGold} />
                         )}
                         <SvgText
                           x={MARK_LABEL_X} y={y - 3}

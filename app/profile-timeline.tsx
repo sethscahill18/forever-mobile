@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, Pressable, Image } from 'react-native';
 import { Stack, useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -21,6 +21,9 @@ import { formatHeight, toGraphValue } from '../src/utils/weight';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { useFonts, Nunito_400Regular, Nunito_500Medium, Nunito_600SemiBold, Nunito_800ExtraBold, Nunito_900Black } from '@expo-google-fonts/nunito';
+import { useAppTheme } from '../src/store/appTheme.store';
+import { ThemeColors } from '../src/theme/tokens';
+import { withAlpha } from '../src/theme/withAlpha';
 
 // ─── Chart constants ──────────────────────────────────────────────────────────
 const SVG_H  = 280;
@@ -96,7 +99,7 @@ function valueLabel(m: Measurement, unit: 'cm' | 'ft'): string {
   return `${m.heightCm.toFixed(1)}cm`;
 }
 
-function ThreeMonthGraph({ measurements, primaryUnit }: { measurements: Measurement[]; primaryUnit: 'cm' | 'ft' }) {
+function ThreeMonthGraph({ measurements, primaryUnit, colors }: { measurements: Measurement[]; primaryUnit: 'cm' | 'ft'; colors: ThemeColors }) {
   const [w, setW] = useState(0);
 
   const _now = new Date(); const cutoff = new Date(_now.getFullYear(), _now.getMonth() - 3, _now.getDate()).getTime();
@@ -107,7 +110,7 @@ function ThreeMonthGraph({ measurements, primaryUnit }: { measurements: Measurem
   if (pts.length === 0) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={{ fontSize: 11, color: '#A0AEC0' }}>No recent data</Text>
+        <Text style={{ fontSize: 11, color: colors.textFaint }}>No recent data</Text>
       </View>
     );
   }
@@ -140,15 +143,15 @@ function ThreeMonthGraph({ measurements, primaryUnit }: { measurements: Measurem
       {w > 0 && (
         <Svg width={w} height={SVG_H}>
           {n > 1 && (
-            <Polyline points={polyPoints} fill="none" stroke="#4A90D9" strokeWidth={1.5} />
+            <Polyline points={polyPoints} fill="none" stroke={colors.primary} strokeWidth={1.5} />
           )}
           {dotPts.map((p, i) => (
             <G key={i}>
-              <Circle cx={p.x} cy={p.y} r={4} fill="#B3D4F5" stroke="#4A90D9" strokeWidth={1.5} />
-              <SvgText x={p.x} y={CHART_H + 13} fontSize={9} fill="#718096" textAnchor="middle">
+              <Circle cx={p.x} cy={p.y} r={4} fill={withAlpha(colors.primary, 0.35)} stroke={colors.primary} strokeWidth={1.5} />
+              <SvgText x={p.x} y={CHART_H + 13} fontSize={9} fill={colors.textMuted} textAnchor="middle">
                 {shortMonthDate(p.m.measuredAt)}
               </SvgText>
-              <SvgText x={p.x} y={CHART_H + 26} fontSize={9} fill="#2D3748" textAnchor="middle" fontWeight="600">
+              <SvgText x={p.x} y={CHART_H + 26} fontSize={9} fill={colors.textSecondary} textAnchor="middle" fontWeight="600">
                 {valueLabel(p.m, primaryUnit)}
               </SvgText>
             </G>
@@ -163,10 +166,14 @@ function HeightChart({
   measurements,
   primaryUnit,
   onMeasurementPress,
+  colors,
+  styles,
 }: {
   measurements: Measurement[];
   primaryUnit: 'cm' | 'ft';
   onMeasurementPress?: (m: Measurement) => void;
+  colors: ThemeColors;
+  styles: Styles;
 }) {
   const [w, setW] = useState(0);
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
@@ -255,28 +262,28 @@ function HeightChart({
       {w > 0 && (
         <View style={{ height: SVG_H }}>
           <Svg width={w} height={SVG_H}>
-            <Rect x={PAD_L} y={PAD_T} width={cW} height={cH} fill="#fff" />
+            <Rect x={PAD_L} y={PAD_T} width={cW} height={cH} fill={colors.surface} />
 
             {yTicks.map((tick, i) => (
               <G key={i}>
                 <SvgLine x1={PAD_L} y1={py(tick)} x2={PAD_L + cW} y2={py(tick)}
-                  stroke={i === 0 ? '#CBD5E0' : '#EDF2F7'} strokeWidth={i === 0 ? 1.5 : 1} />
-                <SvgText x={PAD_L - 8} y={py(tick) + 4} fontSize={11} fill="#4A5568"
+                  stroke={i === 0 ? colors.borderStrong : colors.border} strokeWidth={i === 0 ? 1.5 : 1} />
+                <SvgText x={PAD_L - 8} y={py(tick) + 4} fontSize={11} fill={colors.textSecondary}
                   textAnchor="end" fontWeight="500">
                   {yTickLabel(tick, primaryUnit)}
                 </SvgText>
               </G>
             ))}
 
-            <SvgText x={PAD_L - 8} y={PAD_T - 9} fontSize={10} fill="#A0AEC0" textAnchor="end">
+            <SvgText x={PAD_L - 8} y={PAD_T - 9} fontSize={10} fill={colors.textFaint} textAnchor="end">
               {primaryUnit === 'cm' ? 'cm' : 'ft & in'}
             </SvgText>
             <SvgLine x1={PAD_L} y1={PAD_T} x2={PAD_L} y2={bottomY}
-              stroke="#CBD5E0" strokeWidth={1.5} />
+              stroke={colors.borderStrong} strokeWidth={1.5} />
 
-            {areaPath !== '' && <Path d={areaPath} fill="rgba(74,144,217,0.09)" />}
+            {areaPath !== '' && <Path d={areaPath} fill={withAlpha(colors.primary, 0.09)} />}
             {data.length > 1 && (
-              <Polyline points={polyPts} fill="none" stroke="#4A90D9"
+              <Polyline points={polyPts} fill="none" stroke={colors.primary}
                 strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
             )}
 
@@ -285,8 +292,8 @@ function HeightChart({
                 cx={px(data[selectedIdx].x)} cy={py(data[selectedIdx].y)}
                 r={12}
                 fill={data[selectedIdx].measurement.isMilestone === 1
-                  ? 'rgba(214,158,46,0.18)'
-                  : 'rgba(74,144,217,0.16)'}
+                  ? withAlpha(colors.accentGold, 0.18)
+                  : withAlpha(colors.primary, 0.16)}
               />
             )}
             {data.map((d, i) => {
@@ -296,8 +303,8 @@ function HeightChart({
                   <Path
                     key={i}
                     d={starPath(px(d.x), py(d.y), sel ? 8 : 7, sel ? 3.5 : 3)}
-                    fill={sel ? '#fff' : '#D69E2E'}
-                    stroke="#D69E2E"
+                    fill={sel ? colors.surface : colors.accentGold}
+                    stroke={colors.accentGold}
                     strokeWidth={sel ? 2 : 1.5}
                     strokeLinejoin="round"
                   />
@@ -306,8 +313,8 @@ function HeightChart({
               return (
                 <Circle key={i} cx={px(d.x)} cy={py(d.y)}
                   r={sel ? 6 : 5}
-                  fill={sel ? '#fff' : '#4A90D9'}
-                  stroke="#4A90D9" strokeWidth={sel ? 2.5 : 2} />
+                  fill={sel ? colors.surface : colors.primary}
+                  stroke={colors.primary} strokeWidth={sel ? 2.5 : 2} />
               );
             })}
 
@@ -316,11 +323,11 @@ function HeightChart({
               const lx = Math.min(Math.max(px(d.x), PAD_L + 22), w - PAD_R - 22);
               return (
                 <G key={`xl-${i}`}>
-                  <SvgText x={lx} y={SVG_H - 10} fontSize={10} fill="#4A5568" textAnchor="middle">
+                  <SvgText x={lx} y={SVG_H - 10} fontSize={10} fill={colors.textSecondary} textAnchor="middle">
                     {xLabel(d.x, spansYrs)}
                   </SvgText>
                   <SvgLine x1={px(d.x)} y1={bottomY} x2={px(d.x)} y2={bottomY + 4}
-                    stroke="#CBD5E0" strokeWidth={1} />
+                    stroke={colors.borderStrong} strokeWidth={1} />
                 </G>
               );
             })}
@@ -330,13 +337,13 @@ function HeightChart({
                 <Rect x={tip.x + 2} y={tip.y + 2} width={TIP_W} height={TIP_H}
                   rx={9} fill="rgba(0,0,0,0.07)" />
                 <Rect x={tip.x} y={tip.y} width={TIP_W} height={TIP_H}
-                  rx={9} fill="#fff" stroke="#E2E8F0" strokeWidth={1} />
+                  rx={9} fill={colors.surface} stroke={colors.border} strokeWidth={1} />
                 <SvgText x={tip.x + TIP_W / 2} y={tip.y + 22} fontSize={14}
-                  fill="#2D3748" fontWeight="700" textAnchor="middle">
+                  fill={colors.textSecondary} fontWeight="700" textAnchor="middle">
                   {data[selectedIdx].label}
                 </SvgText>
                 <SvgText x={tip.x + TIP_W / 2} y={tip.y + 40} fontSize={11}
-                  fill="#718096" textAnchor="middle">
+                  fill={colors.textMuted} textAnchor="middle">
                   {formatDate(data[selectedIdx].x)}
                 </SvgText>
               </G>
@@ -362,6 +369,8 @@ export default function ProfileKitchenScreen() {
 
   const [fontsLoaded] = useFonts({ Nunito_400Regular, Nunito_500Medium, Nunito_600SemiBold, Nunito_800ExtraBold, Nunito_900Black });
   const nunitoFont = fontsLoaded ? 'Nunito_400Regular' : undefined;
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [profile,      setProfile]      = useState<Profile | null>(null);
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
   const [isExpanded,   setIsExpanded]   = useState(false);
@@ -489,7 +498,7 @@ export default function ProfileKitchenScreen() {
                 {latest ? (
                   <>
                     <View style={styles.latestLeft}>
-                      <Ionicons name="star" size={25} color="#B8973A" style={{ marginRight: 14 }} />
+                      <Ionicons name="star" size={25} color={colors.accentGoldDark} style={{ marginRight: 14 }} />
                       <View style={{ flexDirection: 'column' }}>
                         <Text style={styles.latestLabel}>LATEST HEIGHT</Text>
                         <Text style={styles.latestHeight}>
@@ -527,20 +536,20 @@ export default function ProfileKitchenScreen() {
                 ? recent[recent.length - 1].heightCm - recent[0].heightCm
                 : null;
               return (
-                <View style={{ borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, marginBottom: 24, overflow: 'hidden' }}>
+                <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 12, marginBottom: 24, overflow: 'hidden' }}>
                   <View style={{ flexDirection: 'row', padding: 14, alignItems: 'flex-start', minHeight: 100 }}>
                     <View style={{ width: '41%', paddingRight: 8 }}>
-                      <Text style={{ fontSize: 11, color: '#4A5568', letterSpacing: 0, marginBottom: 8, fontFamily: fontsLoaded ? 'Nunito_800ExtraBold' : undefined }}>GROWTH PROGRESS</Text>
+                      <Text style={{ fontSize: 11, color: colors.textSecondary, letterSpacing: 0, marginBottom: 8, fontFamily: fontsLoaded ? 'Nunito_800ExtraBold' : undefined }}>GROWTH PROGRESS</Text>
                       {delta !== null ? (
-                        <Text style={{ fontSize: 26, color: '#4A90D9', fontFamily: fontsLoaded ? 'Nunito_600SemiBold' : undefined }}>
+                        <Text style={{ fontSize: 26, color: colors.primary, fontFamily: fontsLoaded ? 'Nunito_600SemiBold' : undefined }}>
                           {delta >= 0 ? '+' : ''}{delta.toFixed(1)} cm
                         </Text>
                       ) : (
-                        <Text style={{ fontSize: 13, color: '#A0AEC0', fontFamily: nunitoFont }}>Not enough data</Text>
+                        <Text style={{ fontSize: 13, color: colors.textFaint, fontFamily: nunitoFont }}>Not enough data</Text>
                       )}
-                      <Text style={{ fontSize: 13, color: '#718096', marginTop: 4, fontFamily: fontsLoaded ? 'Nunito_600SemiBold' : undefined }}>last 3 months</Text>
+                      <Text style={{ fontSize: 13, color: colors.textMuted, marginTop: 4, fontFamily: fontsLoaded ? 'Nunito_600SemiBold' : undefined }}>last 3 months</Text>
                     </View>
-                    <ThreeMonthGraph measurements={measurements} primaryUnit={primaryUnit} />
+                    <ThreeMonthGraph measurements={measurements} primaryUnit={primaryUnit} colors={colors} />
                   </View>
                 </View>
               );
@@ -565,7 +574,7 @@ export default function ProfileKitchenScreen() {
                       />
                     ) : (
                       <View style={styles.milestoneCardImagePlaceholder}>
-                        <Ionicons name="image-outline" size={28} color="#CBD5E0" />
+                        <Ionicons name="image-outline" size={28} color={colors.borderStrong} />
                       </View>
                     )}
                     <View style={styles.milestoneCardBody}>
@@ -599,8 +608,11 @@ export default function ProfileKitchenScreen() {
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
-const styles = StyleSheet.create({
-  screen:    { flex: 1, backgroundColor: '#E8F4FD' },
+type Styles = ReturnType<typeof makeStyles>;
+
+function makeStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+  screen:    { flex: 1, backgroundColor: colors.sceneBackground },
   container: { flex: 1 },
 
   glassBtn: {
@@ -633,7 +645,7 @@ const styles = StyleSheet.create({
     left:            0,
     right:           0,
     bottom:          0,
-    backgroundColor: '#E8F4FD',  // fallback while image loads
+    backgroundColor: colors.sceneBackground,  // fallback while image loads
     overflow:        'hidden',
   },
 
@@ -678,7 +690,7 @@ const styles = StyleSheet.create({
     right:                12,
     top:                  0,
     bottom:               0,
-    backgroundColor:      '#F8F6F1',
+    backgroundColor:      colors.backgroundPaper,
     borderTopLeftRadius:  22,
     borderTopRightRadius: 22,
     shadowColor:          '#000',
@@ -689,32 +701,32 @@ const styles = StyleSheet.create({
 
   // Handle + collapsed content
   handleArea:    { alignItems: 'center', paddingTop: 10, paddingBottom: 16, paddingHorizontal: 20 },
-  handlePill:    { width: 40, height: 4, borderRadius: 2, backgroundColor: '#CBD5E0', marginBottom: 14 },
+  handlePill:    { width: 40, height: 4, borderRadius: 2, backgroundColor: colors.borderStrong, marginBottom: 14 },
   latestRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', paddingHorizontal: 4 },
   latestLeft:      { flexDirection: 'row', alignItems: 'flex-start' },
-  latestLabel:  { fontSize: 15, color: '#4A5568', letterSpacing: 0.8, fontFamily: 'Nunito_800ExtraBold' },
-  latestHeight: { fontSize: 30, color: '#4A90D9', fontFamily: 'Nunito_600SemiBold' },
-  latestDate:   { fontSize: 14, color: '#718096', fontFamily: 'Nunito_500Medium' },
-  latestNone:   { fontSize: 15, color: '#A0AEC0', fontFamily: 'Nunito_400Regular' },
+  latestLabel:  { fontSize: 15, color: colors.textSecondary, letterSpacing: 0.8, fontFamily: 'Nunito_800ExtraBold' },
+  latestHeight: { fontSize: 30, color: colors.primary, fontFamily: 'Nunito_600SemiBold' },
+  latestDate:   { fontSize: 14, color: colors.textMuted, fontFamily: 'Nunito_500Medium' },
+  latestNone:   { fontSize: 15, color: colors.textFaint, fontFamily: 'Nunito_400Regular' },
 
   // Scroll content
   scrollContent:    { paddingHorizontal: 20, paddingTop: 4 },
-  sectionTitle:     { fontSize: 20, fontWeight: '700', color: '#1A202C', marginBottom: 16, fontFamily: 'Nunito_400Regular' },
+  sectionTitle:     { fontSize: 20, fontWeight: '700', color: colors.textPrimary, marginBottom: 16, fontFamily: 'Nunito_400Regular' },
   sectionTitleGap:  { marginTop: 32 },
-  emptySection:     { color: '#A0AEC0', fontSize: 14, marginBottom: 16, fontFamily: 'Nunito_400Regular' },
+  emptySection:     { color: colors.textFaint, fontSize: 14, marginBottom: 16, fontFamily: 'Nunito_400Regular' },
   scrollPad:        { height: 48 },
 
   // Chart
   chartOuter:  { marginBottom: 8 },
-  emptyChart:  { color: '#A0AEC0', fontSize: 14, paddingVertical: 32, textAlign: 'center', fontFamily: 'Nunito_400Regular' },
+  emptyChart:  { color: colors.textFaint, fontSize: 14, paddingVertical: 32, textAlign: 'center', fontFamily: 'Nunito_400Regular' },
 
   // Milestones
   milestoneCard: {
     width:           140,
     borderRadius:    14,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderWidth:     1,
-    borderColor:     '#E2E8F0',
+    borderColor:     colors.border,
     overflow:        'hidden',
   },
   milestoneCardImage: {
@@ -724,7 +736,7 @@ const styles = StyleSheet.create({
   milestoneCardImagePlaceholder: {
     width:           140,
     height:          110,
-    backgroundColor: '#F7FAFC',
+    backgroundColor: colors.background,
     alignItems:      'center',
     justifyContent:  'center',
   },
@@ -732,10 +744,11 @@ const styles = StyleSheet.create({
     padding: 10,
     gap:     4,
   },
-  milestoneName:  { fontSize: 13, color: '#2D3748', fontFamily: 'Nunito_600SemiBold' },
-  milestoneValue: { fontSize: 13, fontWeight: '700', color: '#4A90D9', fontFamily: 'Nunito_400Regular' },
-  milestoneDate:  { fontSize: 11, color: '#A0AEC0', fontFamily: 'Nunito_400Regular' },
+  milestoneName:  { fontSize: 13, color: colors.textSecondary, fontFamily: 'Nunito_600SemiBold' },
+  milestoneValue: { fontSize: 13, fontWeight: '700', color: colors.primary, fontFamily: 'Nunito_400Regular' },
+  milestoneDate:  { fontSize: 11, color: colors.textFaint, fontFamily: 'Nunito_400Regular' },
 
-  allMeasurementsBtn:     { marginTop: 24, backgroundColor: '#4A90D9', borderRadius: 12, padding: 16, alignItems: 'center' },
-  allMeasurementsBtnText: { color: '#fff', fontWeight: '700', fontSize: 16, fontFamily: 'Nunito_400Regular' },
-});
+  allMeasurementsBtn:     { marginTop: 24, backgroundColor: colors.primary, borderRadius: 12, padding: 16, alignItems: 'center' },
+  allMeasurementsBtnText: { color: colors.onPrimary, fontWeight: '700', fontSize: 16, fontFamily: 'Nunito_400Regular' },
+  });
+}

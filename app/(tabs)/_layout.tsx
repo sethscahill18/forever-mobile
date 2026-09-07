@@ -1,24 +1,24 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useAppTheme } from '../../src/store/appTheme.store';
 
 export default function TabLayout() {
+  const { colors } = useAppTheme();
   return (
     <Tabs
       screenOptions={{
-        headerStyle:      { backgroundColor: '#fff' },
-        headerTitleStyle: { fontWeight: '700', color: '#1A202C' },
-        tabBarActiveTintColor:   '#4A90D9',
-        tabBarInactiveTintColor: '#A0AEC0',
-        tabBarStyle: { borderTopColor: '#E2E8F0' },
+        headerStyle:      { backgroundColor: colors.surface },
+        headerTitleStyle: { fontWeight: '700', color: colors.textPrimary },
+        tabBarActiveTintColor:   colors.primary,
+        tabBarInactiveTintColor: colors.textFaint,
+        tabBarStyle: { borderTopColor: colors.border, backgroundColor: colors.surface },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home-outline" size={size} color={color} />
-          ),
+          href: null,
         }}
       />
       <Tabs.Screen
@@ -53,9 +53,7 @@ export default function TabLayout() {
         name="settings"
         options={{
           title: 'Settings',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="settings-outline" size={size} color={color} />
-          ),
+          href: null,
         }}
       />
       <Tabs.Screen name="create-profile" options={{ href: null, title: 'Create a Profile' }} />

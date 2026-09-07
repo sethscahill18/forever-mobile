@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Pressable } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import {
@@ -11,6 +11,8 @@ import { getProfiles } from '../../src/services/profile.service';
 import { getMeasurements } from '../../src/services/measurement.service';
 import { Profile, Measurement } from '../../src/db/schema';
 import { toGraphValue, formatHeight } from '../../src/utils/weight';
+import { useAppTheme } from '../../src/store/appTheme.store';
+import { ThemeColors } from '../../src/theme/tokens';
 
 // ─── Palette ──────────────────────────────────────────────────────────────────
 const COLORS = [
@@ -60,9 +62,13 @@ function formatMeasurement(m: Measurement, unit: 'cm' | 'ft') {
 function MultiProfileChart({
   series,
   unit,
+  colors,
+  styles,
 }: {
   series: ProfileSeries[];
   unit: 'cm' | 'ft';
+  colors: ThemeColors;
+  styles: Styles;
 }) {
   const [w, setW] = useState(0);
 
@@ -105,19 +111,19 @@ function MultiProfileChart({
       {w > 0 && (
         <View style={{ height: SVG_H }}>
           <Svg width={w} height={SVG_H}>
-            <Rect x={PAD_L} y={PAD_T} width={cW} height={cH} fill="#fff" />
+            <Rect x={PAD_L} y={PAD_T} width={cW} height={cH} fill={colors.surface} />
 
             {/* Y-axis grid + labels */}
             {yTicks.map((tick, i) => (
               <G key={i}>
                 <SvgLine
                   x1={PAD_L} y1={py(tick)} x2={PAD_L + cW} y2={py(tick)}
-                  stroke={i === 0 ? '#CBD5E0' : '#EDF2F7'}
+                  stroke={i === 0 ? colors.borderStrong : colors.border}
                   strokeWidth={i === 0 ? 1.5 : 1}
                 />
                 <SvgText
                   x={PAD_L - 6} y={py(tick) + 4}
-                  fontSize={11} fill="#4A5568" textAnchor="end" fontWeight="500"
+                  fontSize={11} fill={colors.textSecondary} textAnchor="end" fontWeight="500"
                 >
                   {yTickLabel(tick, unit)}
                 </SvgText>
@@ -125,16 +131,16 @@ function MultiProfileChart({
             ))}
 
             {/* Y-axis unit label + border */}
-            <SvgText x={PAD_L - 6} y={PAD_T - 9} fontSize={10} fill="#A0AEC0" textAnchor="end">
+            <SvgText x={PAD_L - 6} y={PAD_T - 9} fontSize={10} fill={colors.textFaint} textAnchor="end">
               {unit === 'cm' ? 'cm' : 'ft & in'}
             </SvgText>
             <SvgLine x1={PAD_L} y1={PAD_T} x2={PAD_L} y2={bottomY}
-              stroke="#CBD5E0" strokeWidth={1.5} />
+              stroke={colors.borderStrong} strokeWidth={1.5} />
 
             {/* X-axis labels */}
             {xTicks.map((ts, i) => (
               <SvgText key={i} x={px(ts)} y={bottomY + 16}
-                fontSize={10} fill="#718096" textAnchor="middle">
+                fontSize={10} fill={colors.textMuted} textAnchor="middle">
                 {xTickLabel(ts, spansYears)}
               </SvgText>
             ))}
@@ -182,6 +188,8 @@ function MultiProfileChart({
 export default function CollaborativeScreen() {
   const userId = useAuthStore((s) => s.userId);
   const unit   = useSettingsStore((s) => s.primaryUnit);
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const [series,  setSeries]  = useState<ProfileSeries[]>([]);
   const [loading, setLoading] = useState(true);
@@ -217,7 +225,7 @@ export default function CollaborativeScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color="#4A90D9" size="large" />
+        <ActivityIndicator color={colors.primary} size="large" />
       </View>
     );
   }
@@ -237,7 +245,7 @@ export default function CollaborativeScreen() {
       {/* Chart */}
       <View style={styles.card}>
         {hasData ? (
-          <MultiProfileChart series={activeSeries} unit={unit} />
+          <MultiProfileChart series={activeSeries} unit={unit} colors={colors} styles={styles} />
         ) : (
           <Text style={styles.emptyChart}>Add measurements to profiles to see the chart.</Text>
         )}
@@ -272,50 +280,54 @@ export default function CollaborativeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen:  { flex: 1, backgroundColor: '#F7FAFC' },
-  content: { padding: 16, paddingBottom: 40 },
-  center:  { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40, backgroundColor: '#F7FAFC' },
+type Styles = ReturnType<typeof makeStyles>;
 
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#2D3748', textAlign: 'center', marginBottom: 8 },
-  emptyDesc:  { fontSize: 14, color: '#718096', textAlign: 'center', lineHeight: 20 },
+function makeStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    screen:  { flex: 1, backgroundColor: colors.background },
+    content: { padding: 16, paddingBottom: 40 },
+    center:  { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40, backgroundColor: colors.background },
 
-  card: {
-    backgroundColor:  '#fff',
-    borderRadius:     16,
-    marginBottom:     16,
-    shadowColor:      '#000',
-    shadowOpacity:    0.05,
-    shadowRadius:     8,
-    elevation:        2,
-    overflow:         'hidden',
-  },
+    emptyTitle: { fontSize: 18, fontWeight: '700', color: colors.textSecondary, textAlign: 'center', marginBottom: 8 },
+    emptyDesc:  { fontSize: 14, color: colors.textMuted, textAlign: 'center', lineHeight: 20 },
 
-  // Chart
-  chartOuter: { paddingVertical: 12 },
-  emptyChart: {
-    textAlign: 'center', color: '#A0AEC0',
-    fontSize: 14, paddingVertical: 40, paddingHorizontal: 24,
-  },
+    card: {
+      backgroundColor:  colors.surface,
+      borderRadius:     16,
+      marginBottom:     16,
+      shadowColor:      '#000',
+      shadowOpacity:    0.05,
+      shadowRadius:     8,
+      elevation:        2,
+      overflow:         'hidden',
+    },
 
-  // Legend
-  legendHeading: {
-    fontSize: 14, fontWeight: '700', color: '#4A5568',
-    paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10,
-    borderBottomWidth: 1, borderBottomColor: '#EDF2F7',
-  },
-  legendRow: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    paddingHorizontal: 16,
-    paddingVertical:   12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EDF2F7',
-    gap:               10,
-  },
-  legendRowPressed: { backgroundColor: '#F7FAFC' },
-  swatch:           { width: 28, height: 4, borderRadius: 2 },
-  legendName:      { flex: 1, fontSize: 15, fontWeight: '600', color: '#2D3748' },
-  legendNameFaded: { color: '#A0AEC0' },
-  legendValue:     { fontSize: 14, color: '#718096' },
-});
+    // Chart
+    chartOuter: { paddingVertical: 12 },
+    emptyChart: {
+      textAlign: 'center', color: colors.textFaint,
+      fontSize: 14, paddingVertical: 40, paddingHorizontal: 24,
+    },
+
+    // Legend
+    legendHeading: {
+      fontSize: 14, fontWeight: '700', color: colors.textSecondary,
+      paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10,
+      borderBottomWidth: 1, borderBottomColor: colors.border,
+    },
+    legendRow: {
+      flexDirection:     'row',
+      alignItems:        'center',
+      paddingHorizontal: 16,
+      paddingVertical:   12,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      gap:               10,
+    },
+    legendRowPressed: { backgroundColor: colors.background },
+    swatch:           { width: 28, height: 4, borderRadius: 2 },
+    legendName:      { flex: 1, fontSize: 15, fontWeight: '600', color: colors.textSecondary },
+    legendNameFaded: { color: colors.textFaint },
+    legendValue:     { fontSize: 14, color: colors.textMuted },
+  });
+}
