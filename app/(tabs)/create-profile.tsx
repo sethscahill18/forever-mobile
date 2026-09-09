@@ -25,7 +25,7 @@ export default function CreateProfileScreen() {
         useAppThemeStore.getState().setActiveTheme(values.colourPalette);
       }
       setProfile(profile);
-      router.back();
+      router.replace('/(tabs)/profiles');
     } catch {
       Alert.alert('Error', 'Could not create profile');
     } finally {

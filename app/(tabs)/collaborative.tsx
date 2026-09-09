@@ -2,8 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Pressable } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import {
-  Svg, Polyline, Circle, Line as SvgLine,
-  Text as SvgText, G, Rect,
+  Svg, Polyline, Circle,
 } from 'react-native-svg';
 import { useAuthStore } from '../../src/store/auth.store';
 import { useSettingsStore } from '../../src/store/settings.store';
@@ -13,6 +12,7 @@ import { Profile, Measurement } from '../../src/db/schema';
 import { toGraphValue, formatHeight } from '../../src/utils/weight';
 import { useAppTheme } from '../../src/store/appTheme.store';
 import { ThemeColors } from '../../src/theme/tokens';
+import { withAlpha } from '../../src/theme/withAlpha';
 
 // ─── Palette ──────────────────────────────────────────────────────────────────
 const COLORS = [
@@ -26,32 +26,17 @@ const COLORS = [
   '#D53F8C', // pink
 ];
 
-// ─── Chart constants ──────────────────────────────────────────────────────────
-const SVG_H  = 280;
-const PAD_L  = 60;
-const PAD_R  = 20;
-const PAD_T  = 28;
-const PAD_B  = 44;
-const N_YTKS = 5;
-const N_XTKS = 4;
+// ─── Chart constants — matches the minimal sparkline style used in the
+// profile-timeline bottom sheet's Growth Progress graph (no axes/gridlines).
+const SVG_H = 160;
+const PAD_X = 16;
+const PAD_Y = 16;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type ChartPoint = { x: number; y: number; measurement: Measurement };
 type ProfileSeries = { profile: Profile; color: string; points: ChartPoint[] };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-function yTickLabel(value: number, unit: 'cm' | 'ft') {
-  if (unit === 'cm') return `${Math.round(value)}`;
-  return `${Math.floor(value / 12)}'${Math.round(value % 12)}"`;
-}
-
-function xTickLabel(ts: number, spansYears: boolean) {
-  const d     = new Date(ts);
-  const month = d.toLocaleDateString('en-GB', { month: 'short' });
-  if (spansYears) return `${month} '${String(d.getFullYear()).slice(2)}`;
-  return `${d.getDate()} ${month}`;
-}
-
 function formatMeasurement(m: Measurement, unit: 'cm' | 'ft') {
   if (unit === 'ft' && m.heightFt != null && m.heightIn != null)
     return `${m.heightFt} ft ${m.heightIn} in`;
@@ -61,13 +46,9 @@ function formatMeasurement(m: Measurement, unit: 'cm' | 'ft') {
 // ─── Chart component ──────────────────────────────────────────────────────────
 function MultiProfileChart({
   series,
-  unit,
-  colors,
   styles,
 }: {
   series: ProfileSeries[];
-  unit: 'cm' | 'ft';
-  colors: ThemeColors;
   styles: Styles;
 }) {
   const [w, setW] = useState(0);
@@ -78,8 +59,8 @@ function MultiProfileChart({
     return <Text style={styles.emptyChart}>No measurements to display yet.</Text>;
   }
 
-  const cW = Math.max(w - PAD_L - PAD_R, 1);
-  const cH = SVG_H - PAD_T - PAD_B;
+  const cW = Math.max(w - 2 * PAD_X, 1);
+  const cH = SVG_H - 2 * PAD_Y;
 
   const ys     = allPoints.map((p) => p.y);
   const yMin   = Math.min(...ys);
@@ -89,96 +70,51 @@ function MultiProfileChart({
   const yLow   = yMin - yPad;
   const yHigh  = yMax + yPad;
 
-  const xs         = allPoints.map((p) => p.x);
-  const xMin       = Math.min(...xs);
-  const xMax       = Math.max(...xs);
-  const xRange     = xMax - xMin || 1;
-  const spansYears = new Date(xMin).getFullYear() !== new Date(xMax).getFullYear();
+  const xs     = allPoints.map((p) => p.x);
+  const xMin   = Math.min(...xs);
+  const xMax   = Math.max(...xs);
+  const xRange = xMax - xMin || 1;
 
-  const px = (ts: number) => PAD_L + ((ts - xMin) / xRange) * cW;
-  const py = (v: number)  => PAD_T  + (1 - (v - yLow) / (yHigh - yLow)) * cH;
-
-  const yTicks = Array.from({ length: N_YTKS }, (_, i) =>
-    yLow + (i / (N_YTKS - 1)) * (yHigh - yLow),
-  );
-  const xTicks = Array.from({ length: N_XTKS }, (_, i) =>
-    xMin + (i / (N_XTKS - 1)) * xRange,
-  );
-  const bottomY = PAD_T + cH;
+  const px = (ts: number) => PAD_X + ((ts - xMin) / xRange) * cW;
+  const py = (v: number)  => PAD_Y + (1 - (v - yLow) / (yHigh - yLow)) * cH;
 
   return (
     <View style={styles.chartOuter} onLayout={(e) => setW(e.nativeEvent.layout.width)}>
       {w > 0 && (
-        <View style={{ height: SVG_H }}>
-          <Svg width={w} height={SVG_H}>
-            <Rect x={PAD_L} y={PAD_T} width={cW} height={cH} fill={colors.surface} />
+        <Svg width={w} height={SVG_H}>
+          {/* Profile lines */}
+          {series.map((s) => {
+            if (s.points.length < 2) return null;
+            const pts = s.points
+              .map((p) => `${px(p.x).toFixed(1)},${py(p.y).toFixed(1)}`)
+              .join(' ');
+            return (
+              <Polyline
+                key={s.profile.id}
+                points={pts}
+                fill="none"
+                stroke={s.color}
+                strokeWidth={1.5}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+              />
+            );
+          })}
 
-            {/* Y-axis grid + labels */}
-            {yTicks.map((tick, i) => (
-              <G key={i}>
-                <SvgLine
-                  x1={PAD_L} y1={py(tick)} x2={PAD_L + cW} y2={py(tick)}
-                  stroke={i === 0 ? colors.borderStrong : colors.border}
-                  strokeWidth={i === 0 ? 1.5 : 1}
-                />
-                <SvgText
-                  x={PAD_L - 6} y={py(tick) + 4}
-                  fontSize={11} fill={colors.textSecondary} textAnchor="end" fontWeight="500"
-                >
-                  {yTickLabel(tick, unit)}
-                </SvgText>
-              </G>
-            ))}
-
-            {/* Y-axis unit label + border */}
-            <SvgText x={PAD_L - 6} y={PAD_T - 9} fontSize={10} fill={colors.textFaint} textAnchor="end">
-              {unit === 'cm' ? 'cm' : 'ft & in'}
-            </SvgText>
-            <SvgLine x1={PAD_L} y1={PAD_T} x2={PAD_L} y2={bottomY}
-              stroke={colors.borderStrong} strokeWidth={1.5} />
-
-            {/* X-axis labels */}
-            {xTicks.map((ts, i) => (
-              <SvgText key={i} x={px(ts)} y={bottomY + 16}
-                fontSize={10} fill={colors.textMuted} textAnchor="middle">
-                {xTickLabel(ts, spansYears)}
-              </SvgText>
-            ))}
-
-            {/* Profile lines */}
-            {series.map((s) => {
-              if (s.points.length < 2) return null;
-              const pts = s.points
-                .map((p) => `${px(p.x).toFixed(1)},${py(p.y).toFixed(1)}`)
-                .join(' ');
-              return (
-                <Polyline
-                  key={s.profile.id}
-                  points={pts}
-                  fill="none"
-                  stroke={s.color}
-                  strokeWidth={2.5}
-                  strokeLinejoin="round"
-                  strokeLinecap="round"
-                />
-              );
-            })}
-
-            {/* Single-measurement dots */}
-            {series.map((s) => {
-              if (s.points.length !== 1) return null;
-              return (
-                <Circle
-                  key={s.profile.id}
-                  cx={px(s.points[0].x)}
-                  cy={py(s.points[0].y)}
-                  r={5}
-                  fill={s.color}
-                />
-              );
-            })}
-          </Svg>
-        </View>
+          {/* Dots — every point, styled like the Growth Progress sparkline */}
+          {series.flatMap((s) =>
+            s.points.map((p, i) => (
+              <Circle
+                key={`${s.profile.id}-${i}`}
+                cx={px(p.x)} cy={py(p.y)}
+                r={4}
+                fill={withAlpha(s.color, 0.35)}
+                stroke={s.color}
+                strokeWidth={1.5}
+              />
+            )),
+          )}
+        </Svg>
       )}
     </View>
   );
@@ -245,7 +181,7 @@ export default function CollaborativeScreen() {
       {/* Chart */}
       <View style={styles.card}>
         {hasData ? (
-          <MultiProfileChart series={activeSeries} unit={unit} colors={colors} styles={styles} />
+          <MultiProfileChart series={activeSeries} styles={styles} />
         ) : (
           <Text style={styles.emptyChart}>Add measurements to profiles to see the chart.</Text>
         )}

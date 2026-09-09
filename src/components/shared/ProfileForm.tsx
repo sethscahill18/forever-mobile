@@ -10,7 +10,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { Profile, NewProfile } from '../../db/schema';
 import { AvatarConfig, AVATAR_DEFAULTS, buildAvatarConfig } from '../avatar/types';
-import { AvatarDisplay } from '../avatar/AvatarDisplay';
 import { useAvatarDraftStore } from '../../store/avatarDraft.store';
 import { COMPLETE_AVATARS } from '../avatar/avatarAssets';
 import { useAppTheme } from '../../store/appTheme.store';
@@ -228,9 +227,6 @@ export function ProfileForm({ initial, onSave, onCancel, submitLabel, loading }:
         {/* ── Create Avatar card ───────────────────────────────────────── */}
         <Text style={styles.label}>Avatar</Text>
         <Pressable style={styles.avatarCard} onPress={handleOpenAvatarBuilder}>
-          <View style={styles.avatarPreviewCircle}>
-            <AvatarDisplay config={values.avatarConfig} size={56} compact />
-          </View>
           <View style={styles.avatarCardText}>
             <Text style={styles.avatarCardTitle}>Customise Avatar</Text>
             <Text style={styles.avatarCardSub}>Tap to change look</Text>
@@ -343,11 +339,6 @@ function makeStyles(colors: ThemeColors) {
       borderColor:     colors.border,
       padding:         12,
       gap:             12,
-    },
-    avatarPreviewCircle: {
-      width: 56, height: 56, borderRadius: 28,
-      overflow: 'hidden',
-      backgroundColor: colors.surfaceAlt,
     },
     avatarCardText:  { flex: 1 },
     avatarCardTitle: { fontSize: 15, fontWeight: '600', color: colors.textPrimary },

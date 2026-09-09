@@ -15,7 +15,9 @@ import { useFonts as useDeliusFonts, Delius_400Regular } from '@expo-google-font
 import { AvatarDisplay } from '../../src/components/avatar/AvatarDisplay';
 import { buildAvatarConfig } from '../../src/components/avatar/types';
 import { useAppTheme } from '../../src/store/appTheme.store';
-import { ThemeColors } from '../../src/theme/tokens';
+import { ThemeColors, ThemeName } from '../../src/theme/tokens';
+import { PALETTES } from '../../src/theme/palettes';
+import { withAlpha } from '../../src/theme/withAlpha';
 
 const PROFILE_ICONS: Record<string, ReturnType<typeof require>> = {
   male_teen_blue: require('../../assets/avatar/complete/profile_icons/male_teen_blue_profile_pic.png'),
@@ -86,12 +88,16 @@ export default function ProfilesScreen() {
         ListEmptyComponent={
           <Text style={styles.empty}>No profiles yet. Tap + to create one.</Text>
         }
-        renderItem={({ item: { profile, latest } }) => (
+        renderItem={({ item: { profile, latest } }) => {
+          const cardPalette = PALETTES[(profile.colourPalette as ThemeName)] ?? PALETTES.water;
+          return (
           <Pressable
             style={({ pressed }) => [styles.cardWrapper, pressed && styles.cardPressed]}
             onPress={() => router.push({ pathname: '/profile-timeline', params: { id: profile.id } })}
           >
             <BlurView intensity={70} tint={glassTint} style={styles.card}>
+              {/* Theme wash — reflects this profile's own colour palette */}
+              <View style={[styles.themeWash, { backgroundColor: withAlpha(cardPalette.sceneWall, 0.6) }]} />
               {/* Specular highlight */}
               <View style={styles.specular} />
 
@@ -121,7 +127,8 @@ export default function ProfilesScreen() {
               <Ionicons name="chevron-forward" size={18} color={glassIconSoft} />
             </BlurView>
           </Pressable>
-        )}
+          );
+        }}
       />
 
       {/* Cog button — top right */}
@@ -206,6 +213,10 @@ function makeStyles(colors: ThemeColors) {
       gap:            14,
       borderWidth:    0.5,
       borderColor:    'rgba(255,255,255,0.6)',
+    },
+    themeWash: {
+      position: 'absolute',
+      top: 0, left: 0, right: 0, bottom: 0,
     },
     specular: {
       position:        'absolute',

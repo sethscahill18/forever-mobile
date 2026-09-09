@@ -19,7 +19,11 @@
       "expo-sqlite",
       "expo-secure-store",
       "@react-native-community/datetimepicker",
-      ["react-native-ble-plx", { "isBackgroundEnabled": false }]
+      ["react-native-ble-plx", { "isBackgroundEnabled": false }],
+      [
+        "expo-image-picker",
+        { "photosPermission": "Allow $(PRODUCT_NAME) to access your photo library to attach images." }
+      ]
     ]
   }
 }

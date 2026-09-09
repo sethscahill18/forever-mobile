@@ -28,7 +28,7 @@ export default function RootLayout() {
     if (!ready) return;
     if (userId) {
       initActiveProfile(userId).catch(console.error);
-      router.replace('/(tabs)');
+      router.replace('/(tabs)/profiles');
     } else {
       (async () => {
         const exists = await hasAccount();

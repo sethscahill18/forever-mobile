@@ -15,13 +15,6 @@ export default function TabLayout() {
       }}
     >
       <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          href: null,
-        }}
-      />
-      <Tabs.Screen
         name="profiles"
         options={{
           title: 'Profiles',
@@ -29,6 +22,13 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="people-outline" size={size} color={color} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Home',
+          href: null,
         }}
       />
       <Tabs.Screen
