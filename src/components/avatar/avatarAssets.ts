@@ -24,6 +24,8 @@ export const COMPLETE_AVATARS: CompleteAvatar[] = [
   // ── Child ────────────────────────────────────────────────────────────────
   { id: 'male_child_blue',  bodyType: 'child',    gender: 'male',   source: require('../../../assets/avatar/complete/male_child_blue.png') },
   { id: 'male_child_red',   bodyType: 'child',    gender: 'male',   source: require('../../../assets/avatar/complete/male_child_red.png') },
+  { id: 'female_child_blue', bodyType: 'child',   gender: 'female', source: require('../../../assets/avatar/complete/female_child_blue.png') },
+  { id: 'female_child_red',  bodyType: 'child',   gender: 'female', source: require('../../../assets/avatar/complete/female_child_red.png') },
   // ── Teenager ─────────────────────────────────────────────────────────────
   { id: 'male_teen_blue',   bodyType: 'teenager', gender: 'male',   source: require('../../../assets/avatar/complete/male_teen_blue.png') },
   { id: 'male_teen_red',    bodyType: 'teenager', gender: 'male',   source: require('../../../assets/avatar/complete/male_teen_red.png') },
@@ -33,6 +35,15 @@ export const COMPLETE_AVATARS: CompleteAvatar[] = [
   { id: 'female_teen_blue', bodyType: 'teenager', gender: 'female', source: require('../../../assets/avatar/complete/female_teen_blue.png') },
   { id: 'female_teen_red',  bodyType: 'teenager', gender: 'female', source: require('../../../assets/avatar/complete/female_teen_red.png') },
 ];
+
+// ── Profile icon PNGs ──────────────────────────────────────────────────────────
+// Separate, smaller cropped headshots used for profile cards/avatars (distinct
+// from the full-body COMPLETE_AVATARS images above). Keyed by `profile.avatarId`.
+export const PROFILE_ICONS: Record<string, ImageSourcePropType> = {
+  male_teen_blue:    require('../../../assets/avatar/complete/profile_icons/male_teen_blue_profile_pic.png'),
+  male_child_blue:   require('../../../assets/avatar/complete/profile_icons/male_child_blue_profile_pic.png'),
+  female_child_blue: require('../../../assets/avatar/complete/profile_icons/female_child_blue_profile_pic.png'),
+};
 
 // ── Hex colour → PNG asset key mappings ──────────────────────────────────────
 // The avatar builder stores hex strings; PNG files are named with descriptive keys.

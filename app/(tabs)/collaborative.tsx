@@ -1,6 +1,8 @@
 import { useCallback, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Pressable } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import {
   Svg, Polyline, Circle,
 } from 'react-native-svg';
@@ -160,23 +162,27 @@ export default function CollaborativeScreen() {
 
   if (loading) {
     return (
-      <View style={styles.center}>
+      <SafeAreaView style={styles.center} edges={['top']}>
         <ActivityIndicator color={colors.primary} size="large" />
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (series.length === 0) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.emptyTitle}>No profiles yet</Text>
-        <Text style={styles.emptyDesc}>Create profiles and add measurements to see them here.</Text>
-      </View>
+      <SafeAreaView style={styles.screen} edges={['top']}>
+        <View style={styles.emptyContainer}>
+          <Ionicons name="grid-outline" size={48} color={colors.textFaint} />
+          <Text style={styles.emptyTitle}>No profiles yet</Text>
+          <Text style={styles.emptyDesc}>Create profiles and add measurements to see them here.</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <SafeAreaView style={styles.screen} edges={['top']}>
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content}>
 
       {/* Chart */}
       <View style={styles.card}>
@@ -213,6 +219,7 @@ export default function CollaborativeScreen() {
       </View>
 
     </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -223,8 +230,9 @@ function makeStyles(colors: ThemeColors) {
     screen:  { flex: 1, backgroundColor: colors.background },
     content: { padding: 16, paddingBottom: 40 },
     center:  { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40, backgroundColor: colors.background },
+    emptyContainer: { alignItems: 'center', marginTop: 146, paddingHorizontal: 40, gap: 10 },
 
-    emptyTitle: { fontSize: 18, fontWeight: '700', color: colors.textSecondary, textAlign: 'center', marginBottom: 8 },
+    emptyTitle: { fontSize: 18, fontWeight: '700', color: colors.textSecondary, textAlign: 'center' },
     emptyDesc:  { fontSize: 14, color: colors.textMuted, textAlign: 'center', lineHeight: 20 },
 
     card: {

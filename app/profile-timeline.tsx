@@ -22,8 +22,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { useFonts, Nunito_400Regular, Nunito_500Medium, Nunito_600SemiBold, Nunito_800ExtraBold, Nunito_900Black } from '@expo-google-fonts/nunito';
 import { useAppTheme } from '../src/store/appTheme.store';
-import { ThemeColors } from '../src/theme/tokens';
+import { ThemeColors, ThemeName } from '../src/theme/tokens';
+import { resolveDocUri } from '../src/utils/imageStorage';
 import { withAlpha } from '../src/theme/withAlpha';
+
+// ─── Room scene background — one per profile theme ────────────────────────────
+const SCENE_BACKGROUNDS: Record<ThemeName, ReturnType<typeof require>> = {
+  space:    require('../assets/scenes/room_1_background.png'),
+  dinosaur: require('../assets/scenes/room_2_background.png'),
+  princess: require('../assets/scenes/room_3_background.png'),
+};
 
 // ─── Chart constants ──────────────────────────────────────────────────────────
 const SVG_H  = 280;
@@ -455,7 +463,7 @@ export default function ProfileKitchenScreen() {
         {/* ── Scene area — background layer ── */}
         <View style={styles.kitchen}>
           <Image
-            source={require('../assets/scenes/room_1_background_8.png')}
+            source={SCENE_BACKGROUNDS[(profile?.colourPalette as ThemeName) ?? 'princess']}
             style={{ width: '100%', height: '100%' }}
             resizeMode="cover"
           />
@@ -568,7 +576,7 @@ export default function ProfileKitchenScreen() {
                   <View key={m.id} style={styles.milestoneCard}>
                     {m.milestoneImage ? (
                       <Image
-                        source={{ uri: m.milestoneImage }}
+                        source={{ uri: resolveDocUri(m.milestoneImage)! }}
                         style={styles.milestoneCardImage}
                         resizeMode="cover"
                       />

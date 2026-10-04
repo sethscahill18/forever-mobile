@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { View, Text, FlatList, Image, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/store/auth.store';
@@ -10,8 +11,10 @@ import { Profile, Measurement } from '../../src/db/schema';
 import { formatHeight } from '../../src/utils/weight';
 import { AvatarDisplay } from '../../src/components/avatar/AvatarDisplay';
 import { buildAvatarConfig } from '../../src/components/avatar/types';
+import { PROFILE_ICONS } from '../../src/components/avatar/avatarAssets';
 import { useAppTheme } from '../../src/store/appTheme.store';
 import { ThemeColors } from '../../src/theme/tokens';
+import { resolveDocUri } from '../../src/utils/imageStorage';
 
 type MilestoneFeedItem = { profile: Profile; measurement: Measurement };
 
@@ -36,7 +39,9 @@ function MilestoneCard({ item, primaryUnit, colors, styles }: {
       <View style={styles.cardHeader}>
         <View style={styles.avatar}>
           {profile.profileImage ? (
-            <Image source={{ uri: profile.profileImage }} style={styles.avatarImg} />
+            <Image source={{ uri: resolveDocUri(profile.profileImage)! }} style={styles.avatarImg} />
+          ) : profile.avatarId && PROFILE_ICONS[profile.avatarId] ? (
+            <Image source={PROFILE_ICONS[profile.avatarId]} style={styles.avatarImg} />
           ) : (
             <AvatarDisplay config={buildAvatarConfig(profile)} size={44} compact />
           )}
@@ -52,7 +57,7 @@ function MilestoneCard({ item, primaryUnit, colors, styles }: {
 
       {measurement.milestoneImage ? (
         <Image
-          source={{ uri: measurement.milestoneImage }}
+          source={{ uri: resolveDocUri(measurement.milestoneImage)! }}
           style={styles.milestoneImage}
           resizeMode="cover"
         />
@@ -92,7 +97,7 @@ export default function HomeScreen() {
   );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <FlatList
         data={feed}
         keyExtractor={(item) => item.measurement.id}
@@ -110,7 +115,7 @@ export default function HomeScreen() {
           <MilestoneCard item={item} primaryUnit={primaryUnit} colors={colors} styles={styles} />
         )}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -169,11 +174,11 @@ function makeStyles(colors: ThemeColors) {
 
     emptyContainer: {
       alignItems: 'center',
-      paddingTop: 80,
-      paddingHorizontal: 32,
+      marginTop: 130,
+      paddingHorizontal: 40,
       gap: 10,
     },
-    emptyTitle: { fontSize: 17, fontWeight: '700', color: colors.textSecondary, marginTop: 8 },
-    emptySub:   { fontSize: 14, color: colors.textFaint, textAlign: 'center', lineHeight: 20 },
+    emptyTitle: { fontSize: 18, fontWeight: '700', color: colors.textSecondary, textAlign: 'center', marginTop: 8 },
+    emptySub:   { fontSize: 14, color: colors.textMuted, textAlign: 'center', lineHeight: 20 },
   });
 }

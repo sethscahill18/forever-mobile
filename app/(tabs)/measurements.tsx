@@ -214,7 +214,7 @@ export default function MeasurementsScreen() {
   const hasProfiles = profileList.length > 0;
 
   return (
-    <View style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['top']}>
       <Pressable style={styles.body} onPress={() => Keyboard.dismiss()} accessible={false}>
         {!hasProfiles ? (
           <View style={styles.noProfileBox}>
@@ -412,7 +412,7 @@ export default function MeasurementsScreen() {
           onCancel={() => setShowDatePicker(false)}
         />
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -421,7 +421,7 @@ function makeStyles(colors: ThemeColors) {
     screen: { flex: 1, backgroundColor: colors.background },
     body:   { flex: 1 },
 
-    noProfileBox:     { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, gap: 12 },
+    noProfileBox:     { alignItems: 'center', marginTop: 80, paddingHorizontal: 40, gap: 10 },
     noProfileTitle:   { fontSize: 18, fontWeight: '700', color: colors.textSecondary, textAlign: 'center' },
     noProfileDesc:    { fontSize: 14, color: colors.textMuted, textAlign: 'center', lineHeight: 20 },
     noProfileBtn:     { marginTop: 8, backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10 },

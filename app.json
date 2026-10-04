@@ -23,6 +23,10 @@
       [
         "expo-image-picker",
         { "photosPermission": "Allow $(PRODUCT_NAME) to access your photo library to attach images." }
+      ],
+      [
+        "react-native-nfc-manager",
+        { "nfcPermission": "Allow $(PRODUCT_NAME) to scan the NFC tag on your measurement device." }
       ]
     ]
   }

@@ -4,8 +4,6 @@ import {
   ScrollView, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system/legacy';
-import * as ExpoCrypto from 'expo-crypto';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { Profile, NewProfile } from '../../db/schema';
@@ -15,12 +13,13 @@ import { COMPLETE_AVATARS } from '../avatar/avatarAssets';
 import { useAppTheme } from '../../store/appTheme.store';
 import { PALETTES } from '../../theme/palettes';
 import { ThemeColors } from '../../theme/tokens';
+import { saveLocalImageCopy, resolveDocUri } from '../../utils/imageStorage';
 
 export type ProfileFormValues = {
   name:            string;
   gender:          'male' | 'female';
   avatarConfig:    AvatarConfig;
-  colourPalette:   'water' | 'forest' | 'space';
+  colourPalette:   'princess' | 'dinosaur' | 'space';
   /** Transient UI-only flag — never persisted to the DB. See profileFormToDb. */
   setAsActiveTheme: boolean;
   doorStyle:       'style_1' | 'style_2' | 'style_3';
@@ -56,7 +55,7 @@ function defaults(profile?: Profile): ProfileFormValues {
     name:             profile?.name ?? '',
     gender:           (profile?.gender as 'male' | 'female') ?? 'male',
     avatarConfig:     profile ? buildAvatarConfig(profile) : { ...AVATAR_DEFAULTS },
-    colourPalette:    (profile?.colourPalette as ProfileFormValues['colourPalette']) ?? 'water',
+    colourPalette:    (profile?.colourPalette as ProfileFormValues['colourPalette']) ?? 'princess',
     setAsActiveTheme: false,
     doorStyle:        (profile?.doorStyle   as ProfileFormValues['doorStyle'])   ?? 'style_1',
     doorColour:       (profile?.doorColour  as ProfileFormValues['doorColour'])  ?? 'black',
@@ -75,8 +74,8 @@ type Props = {
 };
 
 const COLOUR_PALETTE_OPTIONS: { value: ProfileFormValues['colourPalette']; label: string; swatch: string }[] = [
-  { value: 'water',  label: 'Water',  swatch: PALETTES.water.primary  },
-  { value: 'forest', label: 'Forest', swatch: PALETTES.forest.primary },
+  { value: 'princess', label: 'Princess', swatch: PALETTES.princess.primary },
+  { value: 'dinosaur', label: 'Dinosaur', swatch: PALETTES.dinosaur.primary },
   { value: 'space',  label: 'Space',  swatch: PALETTES.space.primary  },
 ];
 
@@ -182,13 +181,8 @@ export function ProfileForm({ initial, onSave, onCancel, submitLabel, loading }:
     });
     if (result.canceled) return;
 
-    const uri  = result.assets[0].uri;
-    const dir  = FileSystem.documentDirectory + 'profiles/';
-    await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
-    const ext  = uri.split('.').pop() ?? 'jpg';
-    const dest = dir + ExpoCrypto.randomUUID() + '.' + ext;
-    await FileSystem.copyAsync({ from: uri, to: dest });
-    set('profileImage', dest);
+    const relativePath = await saveLocalImageCopy(result.assets[0].uri, 'profiles');
+    set('profileImage', relativePath);
   }
 
   return (
@@ -272,7 +266,7 @@ export function ProfileForm({ initial, onSave, onCancel, submitLabel, loading }:
         <View style={styles.photoSection}>
           <Pressable style={styles.photoRing} onPress={handlePickImage}>
             {values.profileImage ? (
-              <Image source={{ uri: values.profileImage }} style={styles.photoImage} />
+              <Image source={{ uri: resolveDocUri(values.profileImage)! }} style={styles.photoImage} />
             ) : (
               <View style={styles.photoPlaceholder}>
                 <Ionicons name="camera-outline" size={32} color={colors.textFaint} />

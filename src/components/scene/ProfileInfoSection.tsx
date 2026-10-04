@@ -3,6 +3,10 @@ import { BlurView } from 'expo-blur';
 import { useFonts, Delius_400Regular } from '@expo-google-fonts/delius';
 import { Nunito_400Regular } from '@expo-google-fonts/nunito';
 import { Profile } from '../../db/schema';
+import { AvatarDisplay } from '../avatar/AvatarDisplay';
+import { buildAvatarConfig } from '../avatar/types';
+import { PROFILE_ICONS } from '../avatar/avatarAssets';
+import { resolveDocUri } from '../../utils/imageStorage';
 
 interface Props {
   profile: Profile;
@@ -21,11 +25,21 @@ export function ProfileInfoSection({ profile }: Props) {
         <BlurView intensity={70} tint="light" style={styles.glassFrame}>
           <View style={styles.specular} />
           <View style={styles.avatarClip}>
-            <Image
-              source={require('../../../assets/avatar/complete/profile_icons/male_teen_blue_profile_pic.png')}
-              style={{ width: CLIP_SIZE, height: CLIP_SIZE }}
-              resizeMode="cover"
-            />
+            {profile.profileImage ? (
+              <Image
+                source={{ uri: resolveDocUri(profile.profileImage)! }}
+                style={{ width: CLIP_SIZE, height: CLIP_SIZE }}
+                resizeMode="cover"
+              />
+            ) : profile.avatarId && PROFILE_ICONS[profile.avatarId] ? (
+              <Image
+                source={PROFILE_ICONS[profile.avatarId]}
+                style={{ width: CLIP_SIZE, height: CLIP_SIZE }}
+                resizeMode="cover"
+              />
+            ) : (
+              <AvatarDisplay config={buildAvatarConfig(profile)} size={CLIP_SIZE} compact />
+            )}
           </View>
         </BlurView>
         <View style={{ marginLeft: 12, justifyContent: 'center' }}>

@@ -1,4 +1,4 @@
-export type ThemeName = 'water' | 'forest' | 'space';
+export type ThemeName = 'princess' | 'dinosaur' | 'space';
 
 export type ThemeColors = {
   background: string;

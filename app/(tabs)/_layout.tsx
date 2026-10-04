@@ -6,6 +6,7 @@ export default function TabLayout() {
   const { colors } = useAppTheme();
   return (
     <Tabs
+      initialRouteName="profiles"
       screenOptions={{
         headerStyle:      { backgroundColor: colors.surface },
         headerTitleStyle: { fontWeight: '700', color: colors.textPrimary },
@@ -14,6 +15,16 @@ export default function TabLayout() {
         tabBarStyle: { borderTopColor: colors.border, backgroundColor: colors.surface },
       }}
     >
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Home',
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="home-outline" size={size} color={color} />
+          ),
+        }}
+      />
       <Tabs.Screen
         name="profiles"
         options={{
@@ -25,16 +36,10 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          href: null,
-        }}
-      />
-      <Tabs.Screen
         name="measurements"
         options={{
           title: 'Add',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="add-circle-outline" size={size} color={color} />
           ),
@@ -44,6 +49,7 @@ export default function TabLayout() {
         name="collaborative"
         options={{
           title: 'All',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="grid-outline" size={size} color={color} />
           ),
@@ -53,7 +59,10 @@ export default function TabLayout() {
         name="settings"
         options={{
           title: 'Settings',
-          href: null,
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="settings-outline" size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen name="create-profile" options={{ href: null, title: 'Create a Profile' }} />

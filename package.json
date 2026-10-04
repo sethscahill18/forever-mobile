@@ -32,6 +32,7 @@
     "react-native-ble-plx": "^3.5.1",
     "react-native-gesture-handler": "~2.31.1",
     "react-native-modal-datetime-picker": "^18.0.0",
+    "react-native-nfc-manager": "^3.17.5",
     "react-native-reanimated": "4.3.1",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "4.25.2",

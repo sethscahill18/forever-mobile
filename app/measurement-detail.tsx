@@ -5,14 +5,13 @@ import {
 } from 'react-native';
 import { Stack, useLocalSearchParams, router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system/legacy';
-import * as ExpoCrypto from 'expo-crypto';
 import { eq } from 'drizzle-orm';
 import { db } from '../src/db/database';
 import { measurements, Measurement } from '../src/db/schema';
 import { updateMeasurement } from '../src/services/measurement.service';
 import { useSettingsStore } from '../src/store/settings.store';
 import { formatHeight } from '../src/utils/weight';
+import { saveLocalImageCopy, resolveDocUri, deleteLocalImage } from '../src/utils/imageStorage';
 import { useAppTheme } from '../src/store/appTheme.store';
 import { ThemeColors } from '../src/theme/tokens';
 
@@ -73,13 +72,8 @@ export default function MeasurementDetailScreen() {
     });
     if (result.canceled) return;
 
-    const uri = result.assets[0].uri;
-    const dir = FileSystem.documentDirectory + 'milestones/';
-    await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
-    const ext = uri.split('.').pop() ?? 'jpg';
-    const dest = dir + ExpoCrypto.randomUUID() + '.' + ext;
-    await FileSystem.copyAsync({ from: uri, to: dest });
-    setMilestoneImage(dest);
+    const relativePath = await saveLocalImageCopy(result.assets[0].uri, 'milestones');
+    setMilestoneImage(relativePath);
   }
 
   async function handleSave() {
@@ -88,7 +82,7 @@ export default function MeasurementDetailScreen() {
     try {
       // If un-ticking milestone, delete any previously stored image file
       if (!isMilestone && measurement?.milestoneImage) {
-        await FileSystem.deleteAsync(measurement.milestoneImage, { idempotent: true });
+        await deleteLocalImage(measurement.milestoneImage);
       }
       await updateMeasurement(id, {
         isMilestone:    isMilestone ? 1 : 0,
@@ -161,7 +155,7 @@ export default function MeasurementDetailScreen() {
             <Text style={styles.fieldLabel}>Image</Text>
             {milestoneImage ? (
               <View style={styles.imageContainer}>
-                <Image source={{ uri: milestoneImage }} style={styles.thumbnail} />
+                <Image source={{ uri: resolveDocUri(milestoneImage)! }} style={styles.thumbnail} />
                 <Pressable
                   style={styles.changeImageBtn}
                   onPress={handlePickImage}

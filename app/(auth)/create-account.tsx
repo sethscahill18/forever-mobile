@@ -54,10 +54,10 @@ export default function CreateAccountScreen() {
         <View style={styles.inputRow}>
           <TextInput
             style={styles.inputFlex}
-            placeholder="Your name"
+            placeholder="Enter username"
             value={name}
             onChangeText={setName}
-            autoCapitalize="words"
+            autoCapitalize="none"
           />
         </View>
         <View style={styles.inputRow}>

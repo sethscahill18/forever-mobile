@@ -1,9 +1,12 @@
-import { useMemo } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { useEffect, useMemo } from 'react';
+import { View, Text, Pressable, StyleSheet, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSettingsStore } from '../../src/store/settings.store';
 import { HeightUnit } from '../../src/utils/weight';
-import { useAppTheme } from '../../src/store/appTheme.store';
+import { useAppTheme, useAppThemeStore } from '../../src/store/appTheme.store';
 import { ThemeColors } from '../../src/theme/tokens';
+import { useNfcScan } from '../../src/hooks/useNfcScan';
+import { resolveThemeFromNdef } from '../../src/constants/nfcTagThemes';
 
 const UNIT_OPTIONS: { label: string; value: HeightUnit }[] = [
   { label: 'Centimetres (cm)', value: 'cm' },
@@ -16,8 +19,30 @@ export default function SettingsScreen() {
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
+  const { status: nfcStatus, data: nfcData, error: nfcError, scan: scanNfcTag } = useNfcScan();
+
+  useEffect(() => {
+    if (nfcStatus === 'success' && nfcData) {
+      const matchedTheme = resolveThemeFromNdef(nfcData.ndefTexts);
+
+      if (matchedTheme) {
+        useAppThemeStore.getState().setActiveTheme(matchedTheme);
+      } else {
+        const lines = ['No recognised tag detected.', '', `UID: ${nfcData.uid}`];
+        lines.push('', nfcData.hasNdef
+          ? (nfcData.ndefTexts.length > 0
+              ? `NDEF text:\n${nfcData.ndefTexts.join('\n')}`
+              : 'NDEF present but no decodable text records.')
+          : 'No NDEF data on this tag.');
+        Alert.alert('Unrecognised Tag', lines.join('\n'));
+      }
+    } else if (nfcStatus === 'error' && nfcError) {
+      Alert.alert('Scan Failed', nfcError);
+    }
+  }, [nfcStatus, nfcData, nfcError]);
+
   return (
-    <View style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['top']}>
       <View style={styles.section}>
         <Text style={styles.sectionHeader}>MEASUREMENTS</Text>
         <View style={styles.card}>
@@ -38,7 +63,24 @@ export default function SettingsScreen() {
           </View>
         </View>
       </View>
-    </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionHeader}>DEVICE</Text>
+        <View style={styles.card}>
+          <Text style={styles.rowLabel}>Set the Theme</Text>
+          <Text style={styles.rowDesc}>Scan the door to set the theme.</Text>
+          <Pressable
+            style={[styles.seg, styles.segActive, nfcStatus === 'scanning' && styles.segDisabled]}
+            onPress={scanNfcTag}
+            disabled={nfcStatus === 'scanning'}
+          >
+            <Text style={styles.segTextActive}>
+              {nfcStatus === 'scanning' ? 'Scanning…' : 'Scan Tag'}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+    </SafeAreaView>
   );
 }
 
@@ -65,6 +107,7 @@ function makeStyles(colors: ThemeColors) {
       backgroundColor: colors.background, alignItems: 'center',
     },
     segActive:        { backgroundColor: colors.primary, borderColor: colors.primary },
+    segDisabled:      { opacity: 0.5 },
     segText:          { fontSize: 15, fontWeight: '500', color: colors.textSecondary },
     segTextActive:    { color: colors.onPrimary },
   });

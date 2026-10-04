@@ -35,8 +35,8 @@ const MARK_LABEL_X = 62;
 
 // ─── Colour maps ──────────────────────────────────────────────────────────────
 const WALL_COLOURS: Record<ThemeName, string> = {
-  water:  PALETTES.water.sceneWall,
-  forest: PALETTES.forest.sceneWall,
+  princess: PALETTES.princess.sceneWall,
+  dinosaur: PALETTES.dinosaur.sceneWall,
   space:  PALETTES.space.sceneWall,
 };
 
@@ -108,8 +108,8 @@ export default function KitchenScene({ profile, measurements }: KitchenSceneProp
   const primaryUnit = useSettingsStore((s) => s.primaryUnit);
   const [size, setSize] = React.useState<{ w: number; h: number } | null>(null);
 
-  const palette  = PALETTES[(profile.colourPalette as ThemeName)] ?? PALETTES.water;
-  const wallFill = WALL_COLOURS[(profile.colourPalette as ThemeName)] ?? WALL_COLOURS.water;
+  const palette  = PALETTES[(profile.colourPalette as ThemeName)] ?? PALETTES.princess;
+  const wallFill = WALL_COLOURS[(profile.colourPalette as ThemeName)] ?? WALL_COLOURS.princess;
   const doorFill = DOOR_COLOURS[profile.doorColour] ?? DOOR_COLOURS.black;
 
   const DoorSvg      = DOOR_SVGS[profile.doorStyle       as keyof typeof DOOR_SVGS]      ?? DoorStyle1Svg;

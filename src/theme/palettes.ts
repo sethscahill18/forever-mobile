@@ -1,28 +1,28 @@
 import { ThemeColors, ThemeName } from './tokens';
 
-export const WATER: ThemeColors = {
-  background: '#EAF6FA',
-  backgroundPaper: '#F4FAF8',
-  sceneBackground: '#DFF1F7',
+export const PRINCESS: ThemeColors = {
+  background: '#FDF1F5',
+  backgroundPaper: '#FFF8FA',
+  sceneBackground: '#FBE4ED',
   surface: '#FFFFFF',
-  surfaceAlt: '#E1F1F6',
-  border: '#D2E9EF',
-  borderStrong: '#A6D3DF',
-  textPrimary: '#113247',
-  textSecondary: '#3C6577',
-  textMuted: '#6D8FA0',
-  textFaint: '#9FBBC6',
-  primary: '#1478A0',
+  surfaceAlt: '#FCE8EF',
+  border: '#F6D9E3',
+  borderStrong: '#EBAEC6',
+  textPrimary: '#5B2A41',
+  textSecondary: '#86455F',
+  textMuted: '#B07891',
+  textFaint: '#D6A9BE',
+  primary: '#D6336C',
   onPrimary: '#FFFFFF',
-  accentGold: '#E2A93B',
-  accentGoldDark: '#A97A1F',
+  accentGold: '#E8B84B',
+  accentGoldDark: '#B98A1E',
   danger: '#E5484D',
-  sceneWall: '#DCEEF5',
-  markLine: '#6E5A3A',
-  markLabel: '#4A3B26',
+  sceneWall: '#FCE1EC',
+  markLine: '#8A5A6B',
+  markLabel: '#6B3B52',
 };
 
-export const FOREST: ThemeColors = {
+export const DINOSAUR: ThemeColors = {
   background: '#F1F7ED',
   backgroundPaper: '#F7F4EB',
   sceneBackground: '#E7F1DC',
@@ -67,7 +67,7 @@ export const SPACE: ThemeColors = {
 };
 
 export const PALETTES: Record<ThemeName, ThemeColors> = {
-  water: WATER,
-  forest: FOREST,
+  princess: PRINCESS,
+  dinosaur: DINOSAUR,
   space: SPACE,
 };

@@ -22,7 +22,7 @@ export async function initDatabase() {
       user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       name TEXT NOT NULL,
       avatar TEXT NOT NULL DEFAULT 'child',
-      colour_palette TEXT NOT NULL DEFAULT 'water',
+      colour_palette TEXT NOT NULL DEFAULT 'princess',
       door_style TEXT NOT NULL DEFAULT 'style_1',
       door_colour TEXT NOT NULL DEFAULT 'black',
       handle_style TEXT NOT NULL DEFAULT 'handle_style_1',
@@ -86,14 +86,23 @@ export async function initDatabase() {
     await sqlite.execAsync(`ALTER TABLE profiles RENAME COLUMN theme TO colour_palette;`);
   } catch (_) {}
 
-  // Remap legacy red/blue/green values to the new water/forest/space theme names.
+  // Remap legacy red/blue/green values straight to the current theme names.
   // Each UPDATE only matches its specific old literal, so re-running this on every
   // app start is a safe no-op once already migrated.
   try {
     await sqlite.execAsync(`
-      UPDATE profiles SET colour_palette = 'water'  WHERE colour_palette = 'blue';
-      UPDATE profiles SET colour_palette = 'forest' WHERE colour_palette = 'green';
-      UPDATE profiles SET colour_palette = 'space'  WHERE colour_palette = 'red';
+      UPDATE profiles SET colour_palette = 'princess' WHERE colour_palette = 'blue';
+      UPDATE profiles SET colour_palette = 'dinosaur' WHERE colour_palette = 'green';
+      UPDATE profiles SET colour_palette = 'space'    WHERE colour_palette = 'red';
+    `);
+  } catch (_) {}
+
+  // Remap the previous water/forest theme names (used briefly before this rename)
+  // to their renamed equivalents: water -> princess, forest -> dinosaur.
+  try {
+    await sqlite.execAsync(`
+      UPDATE profiles SET colour_palette = 'princess' WHERE colour_palette = 'water';
+      UPDATE profiles SET colour_palette = 'dinosaur' WHERE colour_palette = 'forest';
     `);
   } catch (_) {}
 }

@@ -4,7 +4,9 @@ import { ThemeName } from '../theme/tokens';
 import { PALETTES } from '../theme/palettes';
 
 const KEY = 'app_active_theme';
-const VALID: ThemeName[] = ['water', 'forest', 'space'];
+const VALID: ThemeName[] = ['princess', 'dinosaur', 'space'];
+// Remaps values persisted under the old theme names (water/forest) to their renamed equivalents.
+const LEGACY_REMAP: Record<string, ThemeName> = { water: 'princess', forest: 'dinosaur' };
 
 type AppThemeState = {
   activeTheme: ThemeName;
@@ -13,14 +15,19 @@ type AppThemeState = {
 };
 
 export const useAppThemeStore = create<AppThemeState>((set) => ({
-  activeTheme: 'water',
+  activeTheme: 'dinosaur',
   setActiveTheme: (theme) => {
     set({ activeTheme: theme });
     AsyncStorage.setItem(KEY, theme).catch(() => {});
   },
   loadActiveTheme: async () => {
     const saved = await AsyncStorage.getItem(KEY);
-    if (saved && VALID.includes(saved as ThemeName)) set({ activeTheme: saved as ThemeName });
+    if (!saved) return;
+    if (VALID.includes(saved as ThemeName)) {
+      set({ activeTheme: saved as ThemeName });
+    } else if (LEGACY_REMAP[saved]) {
+      set({ activeTheme: LEGACY_REMAP[saved] });
+    }
   },
 }));
 
