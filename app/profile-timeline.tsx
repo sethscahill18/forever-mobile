@@ -370,6 +370,10 @@ function HeightChart({
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 const COLLAPSED_H = 120;
+// Leave this much of the room scene visible at the top when fully expanded, so
+// the drag handle never reaches the very top of the screen — right at y:0 it was
+// hard to grab again to pull the sheet back down.
+const EXPANDED_TOP = 90;
 
 export default function ProfileKitchenScreen() {
   const { id }      = useLocalSearchParams<{ id: string }>();
@@ -419,12 +423,12 @@ export default function ProfileKitchenScreen() {
     })
     .onUpdate((e) => {
       const next = startY.value + e.translationY;
-      sheetY.value = Math.min(Math.max(next, 0), snapCollapsed.value);
+      sheetY.value = Math.min(Math.max(next, EXPANDED_TOP), snapCollapsed.value);
     })
     .onEnd((e) => {
       const goExpanded = sheetY.value < snapCollapsed.value / 2 || e.velocityY < -500;
-      const target     = goExpanded ? 0 : snapCollapsed.value;
-      sheetY.value     = withSpring(target, { damping: 20, stiffness: 150 });
+      const target     = goExpanded ? EXPANDED_TOP : snapCollapsed.value;
+      sheetY.value     = withSpring(target, { damping: 50, stiffness: 180, mass: 1, overshootClamping: true });
       runOnJS(handleExpandedChange)(goExpanded);
     });
 
@@ -697,7 +701,10 @@ function makeStyles(colors: ThemeColors) {
     left:                 12,
     right:                12,
     top:                  0,
-    bottom:               0,
+    // Extend well past the bottom of the screen so the room-scene background
+    // can never peek through below the sheet while dragging, regardless of
+    // safe-area insets — makes the sheet look "infinitely long" at the bottom.
+    bottom:               -400,
     backgroundColor:      colors.backgroundPaper,
     borderTopLeftRadius:  22,
     borderTopRightRadius: 22,

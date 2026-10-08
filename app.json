@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Forever",
+    "name": "Forever Measure",
     "slug": "forever",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -19,14 +19,32 @@
       "expo-sqlite",
       "expo-secure-store",
       "@react-native-community/datetimepicker",
-      ["react-native-ble-plx", { "isBackgroundEnabled": false }],
+      [
+        "react-native-ble-plx",
+        {
+          "isBackgroundEnabled": false
+        }
+      ],
       [
         "expo-image-picker",
-        { "photosPermission": "Allow $(PRODUCT_NAME) to access your photo library to attach images." }
+        {
+          "photosPermission": "Allow $(PRODUCT_NAME) to access your photo library to attach images."
+        }
       ],
       [
         "react-native-nfc-manager",
-        { "nfcPermission": "Allow $(PRODUCT_NAME) to scan the NFC tag on your measurement device." }
+        {
+          "nfcPermission": "Allow $(PRODUCT_NAME) to scan the NFC tag on your measurement device.",
+          "includeNdefEntitlement": false
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "17.4"
+          }
+        }
       ]
     ]
   }
