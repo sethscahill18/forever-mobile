@@ -14,12 +14,12 @@ import { db } from '../src/db/database';
 import { profiles, Profile, Measurement } from '../src/db/schema';
 import { AvatarSection } from '../src/components/scene/AvatarSection';
 import { RulerSection } from '../src/components/scene/RulerSection';
-import { ProfileInfoSection } from '../src/components/scene/ProfileInfoSection';
+import { ProfileInfoSection, FRAME_SIZE as ADD_BTN_SIZE } from '../src/components/scene/ProfileInfoSection';
 import { getMeasurements } from '../src/services/measurement.service';
 import { useSettingsStore } from '../src/store/settings.store';
 import { formatHeight, toGraphValue } from '../src/utils/weight';
 import { Ionicons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
+import { Glass } from '../src/components/shared/Glass';
 import { useFonts, Nunito_400Regular, Nunito_500Medium, Nunito_600SemiBold, Nunito_800ExtraBold, Nunito_900Black } from '@expo-google-fonts/nunito';
 import { useAppTheme } from '../src/store/appTheme.store';
 import { ThemeColors, ThemeName } from '../src/theme/tokens';
@@ -71,16 +71,6 @@ function formatMeasurement(m: Measurement, unit: 'cm' | 'ft') {
   if (unit === 'ft' && m.heightFt != null && m.heightIn != null)
     return `${m.heightFt} ft ${m.heightIn} in`;
   return formatHeight(m.heightCm, unit);
-}
-
-function formatDelta(deltaCm: number, unit: 'cm' | 'ft'): string {
-  const sign = deltaCm >= 0 ? '+' : '−';
-  if (unit === 'cm') {
-    const val = Math.abs(Math.round(deltaCm * 10) / 10);
-    return `${sign}${val} cm`;
-  }
-  const totalIn = Math.round(Math.abs(deltaCm / 2.54) * 10) / 10;
-  return `${sign}${totalIn} in`;
 }
 
 // ─── Height chart ─────────────────────────────────────────────────────────────
@@ -398,6 +388,10 @@ export default function ProfileKitchenScreen() {
     }, [id]),
   );
 
+  function openMeasurement(measurementId: string) {
+    router.push({ pathname: '/measurement-detail', params: { id: measurementId } });
+  }
+
   const latest     = measurements[0] ?? null;
   const milestones = measurements.filter((m) => m.isMilestone === 1);
 
@@ -426,7 +420,12 @@ export default function ProfileKitchenScreen() {
       sheetY.value = Math.min(Math.max(next, EXPANDED_TOP), snapCollapsed.value);
     })
     .onEnd((e) => {
-      const goExpanded = sheetY.value < snapCollapsed.value / 2 || e.velocityY < -500;
+      // A flick decides the direction; otherwise snap to whichever end is nearer.
+      const goExpanded = e.velocityY < -250
+        ? true
+        : e.velocityY > 250
+          ? false
+          : sheetY.value < snapCollapsed.value / 2;
       const target     = goExpanded ? EXPANDED_TOP : snapCollapsed.value;
       sheetY.value     = withSpring(target, { damping: 50, stiffness: 180, mass: 1, overshootClamping: true });
       runOnJS(handleExpandedChange)(goExpanded);
@@ -449,19 +448,17 @@ export default function ProfileKitchenScreen() {
         {/* ── Back button overlay ── */}
         <Pressable onPress={() => router.back()} hitSlop={16}
           style={{ position: 'absolute', top: 56, left: 16, zIndex: 99 }}>
-          <BlurView intensity={70} tint="light" style={styles.glassBtn}>
-            <View style={styles.glassBtnSpecular} />
+          <Glass tint="light" style={styles.glassBtn}>
             <Ionicons name="chevron-back" size={24} color="rgba(0,0,0,0.8)" />
-          </BlurView>
+          </Glass>
         </Pressable>
 
         {/* ── Edit button overlay ── */}
         <Pressable onPress={() => router.push({ pathname: '/edit-profile', params: { id } })} hitSlop={16}
           style={{ position: 'absolute', top: 56, right: 16, zIndex: 99 }}>
-          <BlurView intensity={70} tint="light" style={styles.glassBtn}>
-            <View style={styles.glassBtnSpecular} />
+          <Glass tint="light" style={styles.glassBtn}>
             <Ionicons name="create" size={22} color="rgba(0,0,0,0.8)" />
-          </BlurView>
+          </Glass>
         </Pressable>
 
         {/* ── Scene area — background layer ── */}
@@ -486,7 +483,13 @@ export default function ProfileKitchenScreen() {
             style={styles.rulerPane}
             onLayout={(e) => setRulerH(e.nativeEvent.layout.height)}
           >
-            <RulerSection profile={profile} measurements={measurements} primaryUnit={primaryUnit} paneHeight={rulerH} />
+            <RulerSection
+              profile={profile}
+              measurements={measurements}
+              primaryUnit={primaryUnit}
+              paneHeight={rulerH}
+              onMilestonePress={(m) => openMeasurement(m.id)}
+            />
           </View>
         )}
 
@@ -496,6 +499,31 @@ export default function ProfileKitchenScreen() {
             <View style={styles.avatarArea}>
               <AvatarSection profile={profile} latestHeightCm={latest?.heightCm} />
             </View>
+          </View>
+        )}
+
+        {/* ── Add measurement button (profile already known → skips profile selection) ── */}
+        {profile && (
+          <View
+            style={[
+              // Ruler pane spans top 25% → bottom 15%, so its bottom edge is at 85% of the screen.
+              { position: 'absolute', top: '85%', marginTop: -(ADD_BTN_SIZE + 32), left: '50%', marginLeft: -ADD_BTN_SIZE / 2 },
+            ]}
+          >
+            <Pressable
+              accessibilityLabel={`Add a measurement for ${profile.name}`}
+              onPress={() => router.push({ pathname: '/(tabs)/measurements', params: { profileId: profile.id } })}
+            >
+              <Glass
+                tint="light"
+                style={{
+                  width: ADD_BTN_SIZE, height: ADD_BTN_SIZE, borderRadius: ADD_BTN_SIZE / 2,
+                  alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <Ionicons name="add" size={40} color="rgba(0,0,0,0.8)" />
+              </Glass>
+            </Pressable>
           </View>
         )}
 
@@ -577,7 +605,7 @@ export default function ProfileKitchenScreen() {
                 contentContainerStyle={{ paddingBottom: 8, gap: 12 }}
               >
                 {milestones.map((m) => (
-                  <View key={m.id} style={styles.milestoneCard}>
+                  <Pressable key={m.id} style={styles.milestoneCard} onPress={() => openMeasurement(m.id)}>
                     {m.milestoneImage ? (
                       <Image
                         source={{ uri: resolveDocUri(m.milestoneImage)! }}
@@ -594,7 +622,7 @@ export default function ProfileKitchenScreen() {
                       <Text style={styles.milestoneValue}>{formatMeasurement(m, primaryUnit)}</Text>
                       <Text style={styles.milestoneDate}>{shortDate(m.measuredAt)}</Text>
                     </View>
-                  </View>
+                  </Pressable>
                 ))}
               </ScrollView>
             )}
@@ -633,18 +661,7 @@ function makeStyles(colors: ThemeColors) {
     paddingHorizontal: 10,
     paddingVertical:   6,
     borderRadius:      20,
-    overflow:          'hidden',
-    borderWidth:       0.5,
-    borderColor:       'rgba(255,255,255,0.6)',
     gap:               3,
-  },
-  glassBtnSpecular: {
-    position:        'absolute',
-    top:             0,
-    left:            0,
-    right:           0,
-    height:          '50%',
-    backgroundColor: 'rgba(255,255,255,0.22)',
   },
   glassBtnText: {
     fontSize: 17,

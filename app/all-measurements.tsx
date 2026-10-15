@@ -61,7 +61,7 @@ export default function AllMeasurementsScreen() {
             onPress={() =>
               router.push({
                 pathname: '/measurement-detail',
-                params: { id: item.id, profileName: profileName ?? '' },
+                params: { id: item.id },
               })
             }
           >

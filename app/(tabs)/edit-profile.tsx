@@ -13,7 +13,6 @@ import { ThemeColors } from '../../src/theme/tokens';
 export default function EditProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(false);
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
@@ -27,20 +26,12 @@ export default function EditProfileScreen() {
     }, [id]),
   );
 
+  // Called by the form after every change (auto-save) — stays on the page.
   async function handleSave(values: ProfileFormValues) {
-    if (!values.name.trim()) return Alert.alert('Name is required');
-    if (!id) return;
-    setLoading(true);
-    try {
-      await updateProfile(id, profileFormToDb(values));
-      if (values.setAsActiveTheme) {
-        useAppThemeStore.getState().setActiveTheme(values.colourPalette);
-      }
-      router.back();
-    } catch {
-      Alert.alert('Error', 'Could not update profile');
-    } finally {
-      setLoading(false);
+    if (!id || !values.name.trim()) return;
+    await updateProfile(id, profileFormToDb(values));
+    if (values.setAsActiveTheme) {
+      useAppThemeStore.getState().setActiveTheme(values.colourPalette);
     }
   }
 
@@ -54,7 +45,8 @@ export default function EditProfileScreen() {
         onSave={handleSave}
         onCancel={() => router.back()}
         submitLabel="Save Changes"
-        loading={loading}
+        loading={false}
+        autoSave
       />
     </View>
   );

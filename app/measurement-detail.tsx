@@ -3,12 +3,13 @@ import {
   View, Text, Switch, TextInput, Pressable, StyleSheet,
   ScrollView, Alert, Image, ActivityIndicator,
 } from 'react-native';
-import { Stack, useLocalSearchParams, router } from 'expo-router';
+import { useLocalSearchParams, router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { eq } from 'drizzle-orm';
 import { db } from '../src/db/database';
-import { measurements, Measurement } from '../src/db/schema';
-import { updateMeasurement } from '../src/services/measurement.service';
+import { measurements, profiles, Measurement } from '../src/db/schema';
+import { updateMeasurement, deleteMeasurement } from '../src/services/measurement.service';
 import { useSettingsStore } from '../src/store/settings.store';
 import { formatHeight } from '../src/utils/weight';
 import { saveLocalImageCopy, resolveDocUri, deleteLocalImage } from '../src/utils/imageStorage';
@@ -28,7 +29,10 @@ function formatMeasurement(m: Measurement, unit: 'cm' | 'ft') {
 }
 
 export default function MeasurementDetailScreen() {
-  const { id, profileName } = useLocalSearchParams<{ id: string; profileName: string }>();
+  // Only `id` is required — the profile is looked up from the measurement, so this
+  // modal can be opened from anywhere. `profileName` is an optional fast path.
+  const { id, profileName: profileNameParam } = useLocalSearchParams<{ id: string; profileName?: string }>();
+  const [profileName, setProfileName] = useState<string | null>(profileNameParam || null);
   const primaryUnit = useSettingsStore((s) => s.primaryUnit);
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -48,6 +52,9 @@ export default function MeasurementDetailScreen() {
       setIsMilestone(m.isMilestone === 1);
       setMilestoneName(m.milestoneName ?? '');
       setMilestoneImage(m.milestoneImage ?? null);
+      db.select().from(profiles).where(eq(profiles.id, m.profileId)).then(([p]) => {
+        if (p) setProfileName(p.name);
+      });
     });
   }, [id]);
 
@@ -97,27 +104,63 @@ export default function MeasurementDetailScreen() {
     }
   }
 
+  function handleMenuPress() {
+    Alert.alert('Measurement Options', undefined, [
+      { text: 'Delete measurement', style: 'destructive', onPress: confirmDelete },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  }
+
+  function confirmDelete() {
+    Alert.alert(
+      'Delete measurement?',
+      'This measurement will be permanently removed from the records. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            if (!id) return;
+            try {
+              if (measurement?.milestoneImage) await deleteLocalImage(measurement.milestoneImage);
+              await deleteMeasurement(id);
+              router.back();
+            } catch {
+              Alert.alert('Error', 'Could not delete the measurement.');
+            }
+          },
+        },
+      ],
+    );
+  }
+
   if (!measurement) {
     return (
       <View style={styles.loading}>
-        <Stack.Screen options={{ headerShown: true, title: 'Measurement', headerTintColor: colors.primary }} />
         <ActivityIndicator color={colors.primary} />
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Stack.Screen
-        options={{
-          headerShown:      true,
-          title:            'Measurement',
-          headerBackTitle:  'Back',
-          headerStyle:      { backgroundColor: colors.surface },
-          headerTitleStyle: { fontWeight: '700', color: colors.textPrimary },
-          headerTintColor:  colors.primary,
-        }}
-      />
+    <View style={styles.screen}>
+      {/* Modal header: close (left) · title (centre) · options (right) */}
+      <View style={styles.header}>
+        <Pressable onPress={() => router.back()} hitSlop={12} accessibilityLabel="Close" style={styles.headerSide}>
+          <Ionicons name="close" size={26} color={colors.textMuted} />
+        </Pressable>
+        <Text style={styles.headerTitle}>Measurement</Text>
+        <Pressable
+          onPress={handleMenuPress}
+          hitSlop={12}
+          accessibilityLabel="More options"
+          style={[styles.headerSide, styles.headerSideRight]}
+        >
+          <Ionicons name="ellipsis-horizontal" size={24} color={colors.textMuted} />
+        </Pressable>
+      </View>
+    <ScrollView style={styles.scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
 
       {/* ── Read-only info ── */}
       <View style={styles.card}>
@@ -181,6 +224,7 @@ export default function MeasurementDetailScreen() {
         <Text style={styles.saveText}>{saving ? 'Saving…' : 'Save'}</Text>
       </Pressable>
     </ScrollView>
+    </View>
   );
 }
 
@@ -198,8 +242,16 @@ type Styles = ReturnType<typeof makeStyles>;
 function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
     screen:  { flex: 1, backgroundColor: colors.background },
+    scroll:  { flex: 1 },
+    header: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 20, paddingTop: 20, paddingBottom: 8,
+    },
+    headerTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, textAlign: 'center' },
+    headerSide:      { width: 40, alignItems: 'flex-start' },
+    headerSideRight: { alignItems: 'flex-end' },
     content: { padding: 20, paddingBottom: 48 },
-    loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background },
 
     card: {
       backgroundColor:  colors.surface,

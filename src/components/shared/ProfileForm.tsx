@@ -1,9 +1,10 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, TextInput, Pressable, StyleSheet, Image,
   ScrollView, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { Profile, NewProfile } from '../../db/schema';
@@ -14,10 +15,13 @@ import { useAppTheme } from '../../store/appTheme.store';
 import { PALETTES } from '../../theme/palettes';
 import { ThemeColors } from '../../theme/tokens';
 import { saveLocalImageCopy, resolveDocUri } from '../../utils/imageStorage';
+import { formatAge } from '../../utils/age';
 
 export type ProfileFormValues = {
   name:            string;
   gender:          'male' | 'female';
+  /** Epoch ms of the date of birth, or null if not set. */
+  dateOfBirth:     number | null;
   avatarConfig:    AvatarConfig;
   colourPalette:   'princess' | 'dinosaur' | 'space';
   /** Transient UI-only flag — never persisted to the DB. See profileFormToDb. */
@@ -34,6 +38,7 @@ export function profileFormToDb(v: ProfileFormValues): Omit<NewProfile, 'id' | '
   return {
     name:                v.name,
     gender:              v.gender,
+    dateOfBirth:         v.dateOfBirth,
     avatar:              v.avatarConfig.bodyType,
     avatarId:            v.avatarConfig.avatarId ?? null,
     avatarSkinTone:      v.avatarConfig.skinTone,
@@ -54,6 +59,7 @@ function defaults(profile?: Profile): ProfileFormValues {
   return {
     name:             profile?.name ?? '',
     gender:           (profile?.gender as 'male' | 'female') ?? 'male',
+    dateOfBirth:      profile?.dateOfBirth ?? null,
     avatarConfig:     profile ? buildAvatarConfig(profile) : { ...AVATAR_DEFAULTS },
     colourPalette:    (profile?.colourPalette as ProfileFormValues['colourPalette']) ?? 'princess',
     setAsActiveTheme: false,
@@ -67,10 +73,12 @@ function defaults(profile?: Profile): ProfileFormValues {
 
 type Props = {
   initial?:    Profile;
-  onSave:      (values: ProfileFormValues) => void;
+  onSave:      (values: ProfileFormValues) => void | Promise<void>;
   onCancel:    () => void;
   submitLabel: string;
   loading:     boolean;
+  /** Save every change immediately (no Save/Cancel buttons). Used when editing. */
+  autoSave?:   boolean;
 };
 
 const COLOUR_PALETTE_OPTIONS: { value: ProfileFormValues['colourPalette']; label: string; swatch: string }[] = [
@@ -129,15 +137,54 @@ function OptionRow<T extends string>({
   );
 }
 
-export function ProfileForm({ initial, onSave, onCancel, submitLabel, loading }: Props) {
+export function ProfileForm({ initial, onSave, onCancel, submitLabel, loading, autoSave }: Props) {
   const [values, setValues] = useState<ProfileFormValues>(() => defaults(initial));
   const hasVisitedBuilder = useRef(false);
+  const [showDobPicker, setShowDobPicker] = useState(false);
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
-  function set<K extends keyof ProfileFormValues>(key: K, val: ProfileFormValues[K]) {
-    setValues((prev) => ({ ...prev, [key]: val }));
+  // Latest values, readable from timers / effects without stale closures.
+  const valuesRef  = useRef(values);
+  const saveTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
+
+  async function flushSave() {
+    saveTimer.current = null;
+    const v = valuesRef.current;
+    if (!v.name.trim()) return; // never auto-save an empty name
+    setSaveState('saving');
+    try {
+      await onSave(v);
+      setSaveState('saved');
+      if (savedTimer.current) clearTimeout(savedTimer.current);
+      savedTimer.current = setTimeout(() => setSaveState('idle'), 1500);
+    } catch {
+      setSaveState('idle');
+    }
   }
+
+  function set<K extends keyof ProfileFormValues>(key: K, val: ProfileFormValues[K]) {
+    const next = { ...valuesRef.current, [key]: val };
+    valuesRef.current = next;
+    setValues(next);
+    if (autoSave) {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      // Typing waits for a pause; taps save almost immediately.
+      saveTimer.current = setTimeout(flushSave, key === 'name' ? 700 : 150);
+    }
+  }
+
+  // Don't lose a pending change if the user leaves straight after editing.
+  useEffect(() => () => {
+    if (savedTimer.current) clearTimeout(savedTimer.current);
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current);
+      const v = valuesRef.current;
+      if (autoSave && v.name.trim()) void onSave(v);
+    }
+  }, []);
 
   // When the user returns from the avatar builder, sync the draft store config back
   useFocusEffect(
@@ -191,6 +238,11 @@ export function ProfileForm({ initial, onSave, onCancel, submitLabel, loading }:
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+        {autoSave && (
+          <Text style={styles.saveStatus}>
+            {saveState === 'saving' ? 'Saving…' : saveState === 'saved' ? 'Saved ✓' : 'Changes save automatically'}
+          </Text>
+        )}
 
         {/* ── Name ─────────────────────────────────────────────────────── */}
         <Text style={styles.label}>Name</Text>
@@ -217,6 +269,34 @@ export function ProfileForm({ initial, onSave, onCancel, submitLabel, loading }:
             </Pressable>
           ))}
         </View>
+
+        {/* ── Date of birth ────────────────────────────────────────────── */}
+        <Text style={styles.label}>Date of Birth</Text>
+        <Pressable style={styles.dobBtn} onPress={() => setShowDobPicker(true)}>
+          <Ionicons name="calendar-outline" size={20} color={colors.textFaint} />
+          <View style={styles.dobText}>
+            <Text style={values.dateOfBirth != null ? styles.dobValue : styles.dobPlaceholder}>
+              {values.dateOfBirth != null
+                ? new Date(values.dateOfBirth).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })
+                : 'Select date of birth'}
+            </Text>
+            {values.dateOfBirth != null && (
+              <Text style={styles.dobAge}>{formatAge(values.dateOfBirth, Date.now())}</Text>
+            )}
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.borderStrong} />
+        </Pressable>
+        <DateTimePickerModal
+          isVisible={showDobPicker}
+          mode="date"
+          date={values.dateOfBirth != null ? new Date(values.dateOfBirth) : new Date(new Date().getFullYear() - 5, 0, 1)}
+          maximumDate={new Date()}
+          onConfirm={(d) => {
+            set('dateOfBirth', new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12).getTime());
+            setShowDobPicker(false);
+          }}
+          onCancel={() => setShowDobPicker(false)}
+        />
 
         {/* ── Create Avatar card ───────────────────────────────────────── */}
         <Text style={styles.label}>Avatar</Text>
@@ -289,7 +369,7 @@ export function ProfileForm({ initial, onSave, onCancel, submitLabel, loading }:
         </View>
 
         {/* ── Actions ──────────────────────────────────────────────────── */}
-        <View style={styles.actions}>
+        {!autoSave && <View style={styles.actions}>
           <Pressable style={styles.cancelBtn} onPress={onCancel}>
             <Text style={styles.cancelText}>Cancel</Text>
           </Pressable>
@@ -300,7 +380,7 @@ export function ProfileForm({ initial, onSave, onCancel, submitLabel, loading }:
           >
             <Text style={styles.saveText}>{loading ? 'Saving…' : submitLabel}</Text>
           </Pressable>
-        </View>
+        </View>}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -313,6 +393,8 @@ function makeStyles(colors: ThemeColors) {
     scroll:   { flex: 1, backgroundColor: colors.background },
     content:  { padding: 20, paddingBottom: 48 },
 
+    saveStatus: { fontSize: 12, color: colors.textFaint, textAlign: 'right', marginBottom: -8 },
+
     label: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: 8, marginTop: 16 },
     input: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 13, fontSize: 16, color: colors.textPrimary },
 
@@ -322,6 +404,17 @@ function makeStyles(colors: ThemeColors) {
     genderBtnActive:  { backgroundColor: colors.primary, borderColor: colors.primary },
     genderText:       { fontSize: 15, fontWeight: '600', color: colors.textSecondary },
     genderTextActive: { color: colors.onPrimary },
+
+    // Date of birth
+    dobBtn: {
+      flexDirection: 'row', alignItems: 'center', gap: 12,
+      backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
+      borderRadius: 10, padding: 13,
+    },
+    dobText:        { flex: 1 },
+    dobValue:       { fontSize: 16, color: colors.textPrimary },
+    dobPlaceholder: { fontSize: 16, color: colors.textFaint },
+    dobAge:         { fontSize: 12, color: colors.textMuted, marginTop: 2 },
 
     // Avatar card
     avatarCard: {

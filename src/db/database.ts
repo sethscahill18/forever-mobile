@@ -80,6 +80,10 @@ export async function initDatabase() {
     await sqlite.execAsync(`ALTER TABLE profiles ADD COLUMN gender TEXT NOT NULL DEFAULT 'male';`);
   } catch (_) {}
 
+  try {
+    await sqlite.execAsync(`ALTER TABLE profiles ADD COLUMN date_of_birth INTEGER;`);
+  } catch (_) {}
+
   // Rename `theme` -> `colour_palette` (upgrading installs only — no-ops harmlessly on
   // fresh installs where the table is already created with `colour_palette`).
   try {

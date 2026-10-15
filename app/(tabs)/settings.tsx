@@ -1,12 +1,14 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSettingsStore } from '../../src/store/settings.store';
 import { HeightUnit } from '../../src/utils/weight';
 import { useAppTheme, useAppThemeStore } from '../../src/store/appTheme.store';
-import { ThemeColors } from '../../src/theme/tokens';
+import { ThemeColors, ThemeName } from '../../src/theme/tokens';
 import { useNfcScan } from '../../src/hooks/useNfcScan';
 import { resolveThemeFromNdef } from '../../src/constants/nfcTagThemes';
+import { sendRgbToDevice } from '../../src/services/bleDevice';
+import { THEME_LED_RGB } from '../../src/constants/deviceLedColours';
 
 const UNIT_OPTIONS: { label: string; value: HeightUnit }[] = [
   { label: 'Centimetres (cm)', value: 'cm' },
@@ -20,13 +22,36 @@ export default function SettingsScreen() {
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const { status: nfcStatus, data: nfcData, error: nfcError, scan: scanNfcTag } = useNfcScan();
+  const [deviceSyncing, setDeviceSyncing] = useState(false);
+
+  // Runs once a theme has been identified from a tag (real or simulated).
+  function handleThemeDetected(matchedTheme: ThemeName) {
+    useAppThemeStore.getState().setActiveTheme(matchedTheme);
+    const rgb = THEME_LED_RGB[matchedTheme];
+    // Send straight away — no confirmation prompt.
+    setDeviceSyncing(true);
+    sendRgbToDevice(rgb)
+      .then((result) => {
+        // Only shown when the firmware replies (e.g. "RGB_OK,255,80,0").
+        if (result.reply) {
+          Alert.alert('Device updated', `Sent: ${result.command}\nDevice replied: ${result.reply}`);
+        }
+      })
+      .catch(() => {
+        Alert.alert(
+          'Device not updated',
+          'The message could not be sent. Make sure the device is switched on and nearby, then scan again.',
+        );
+      })
+      .finally(() => setDeviceSyncing(false));
+  }
 
   useEffect(() => {
     if (nfcStatus === 'success' && nfcData) {
       const matchedTheme = resolveThemeFromNdef(nfcData.ndefTexts);
 
       if (matchedTheme) {
-        useAppThemeStore.getState().setActiveTheme(matchedTheme);
+        handleThemeDetected(matchedTheme);
       } else {
         const lines = ['No recognised tag detected.', '', `UID: ${nfcData.uid}`];
         lines.push('', nfcData.hasNdef
@@ -70,12 +95,12 @@ export default function SettingsScreen() {
           <Text style={styles.rowLabel}>Set the Theme</Text>
           <Text style={styles.rowDesc}>Scan the door to set the theme.</Text>
           <Pressable
-            style={[styles.seg, styles.segActive, nfcStatus === 'scanning' && styles.segDisabled]}
+            style={[styles.seg, styles.segActive, (nfcStatus === 'scanning' || deviceSyncing) && styles.segDisabled]}
             onPress={scanNfcTag}
-            disabled={nfcStatus === 'scanning'}
+            disabled={nfcStatus === 'scanning' || deviceSyncing}
           >
             <Text style={styles.segTextActive}>
-              {nfcStatus === 'scanning' ? 'Scanning…' : 'Scan Tag'}
+              {nfcStatus === 'scanning' ? 'Scanning…' : deviceSyncing ? 'Updating device…' : 'Scan Tag'}
             </Text>
           </Pressable>
         </View>

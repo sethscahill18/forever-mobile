@@ -45,7 +45,9 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <Stack screenOptions={{ headerShown: false }} />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="measurement-detail" options={{ presentation: 'modal', headerShown: false }} />
+      </Stack>
     </GestureHandlerRootView>
   );
 }

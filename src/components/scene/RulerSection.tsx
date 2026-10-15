@@ -1,5 +1,5 @@
-import { View, StyleSheet, useWindowDimensions, Text } from 'react-native';
-import { BlurView } from 'expo-blur';
+import { View, StyleSheet, useWindowDimensions, Text, Pressable } from 'react-native';
+import { Glass } from '../shared/Glass';
 import Svg, { Line as SvgLine, Text as SvgText, G } from 'react-native-svg';
 import { useFonts, Nunito_400Regular, Nunito_600SemiBold } from '@expo-google-fonts/nunito';
 import { Measurement, Profile } from '../../db/schema';
@@ -11,6 +11,8 @@ interface Props {
   measurements: Measurement[];
   primaryUnit:  'cm' | 'ft';
   paneHeight:   number;
+  /** Called when a milestone bubble is tapped. */
+  onMilestonePress?: (m: Measurement) => void;
 }
 
 const MAX_CM  = 200;
@@ -33,7 +35,7 @@ function cmLabel(m: Measurement, unit: 'cm' | 'ft'): string {
 
 type CardData = { m: Measurement; cardTop: number; tickY: number };
 
-export function RulerSection({ profile, measurements, primaryUnit, paneHeight }: Props) {
+export function RulerSection({ profile, measurements, primaryUnit, paneHeight, onMilestonePress }: Props) {
   const { width: screenWidth } = useWindowDimensions();
   const [fontsLoaded] = useFonts({ Nunito_400Regular, Nunito_600SemiBold });
 
@@ -92,9 +94,9 @@ export function RulerSection({ profile, measurements, primaryUnit, paneHeight }:
   }
 
   return (
-    <View style={FILL} pointerEvents="none">
+    <View style={FILL} pointerEvents="box-none">
 
-      <Svg width={paneW} height={h}>
+      <Svg width={paneW} height={h} pointerEvents="none">
 
         {/* Fine ticks (every 2 cm, centred on spine) */}
         {fineTicks.map((cm) => {
@@ -201,17 +203,17 @@ export function RulerSection({ profile, measurements, primaryUnit, paneHeight }:
 
       {/* Milestone cards — Liquid Glass */}
       {cardItems.map(({ m, cardTop }) => (
-        <BlurView key={`card${m.id}`}
-          intensity={70} tint="light"
-          style={[styles.card, { position: 'absolute', left: CARD_LEFT, top: cardTop,
-            width: CARD_W, height: CARD_H }]}
+        <Pressable
+          key={`card${m.id}`}
+          onPress={() => onMilestonePress?.(m)}
+          style={{ position: 'absolute', left: CARD_LEFT, top: cardTop, width: CARD_W, height: CARD_H }}
         >
-          {/* Specular highlight — simulates the top-edge glass reflection */}
-          <View style={styles.specular} />
-          <Text style={[styles.cardTitle, fontsLoaded ? { fontFamily: 'Nunito_600SemiBold' } : null]} numberOfLines={2}>{m.milestoneName}</Text>
-          <View style={{ flex: 1 }} />
-          <Text style={[styles.cardDate, fontsLoaded ? { fontFamily: 'Nunito_400Regular' } : null]}>{formatDate(m.measuredAt)}</Text>
-        </BlurView>
+          <Glass tint="light" style={[styles.card, { flex: 1 }]}>
+            <Text style={[styles.cardTitle, fontsLoaded ? { fontFamily: 'Nunito_600SemiBold' } : null]} numberOfLines={2}>{m.milestoneName}</Text>
+            <View style={{ flex: 1 }} />
+            <Text style={[styles.cardDate, fontsLoaded ? { fontFamily: 'Nunito_400Regular' } : null]}>{formatDate(m.measuredAt)}</Text>
+          </Glass>
+        </Pressable>
       ))}
 
     </View>
@@ -221,20 +223,9 @@ export function RulerSection({ profile, measurements, primaryUnit, paneHeight }:
 const styles = StyleSheet.create({
   card: {
     borderRadius:   14,
-    overflow:       'hidden',
     padding:        8,
     flexDirection:  'column',
     justifyContent: 'flex-start',
-    borderWidth:    0.5,
-    borderColor:    'rgba(255,255,255,0.6)',
-  },
-  specular: {
-    position:        'absolute',
-    top:             0,
-    left:            0,
-    right:           0,
-    height:          '45%',
-    backgroundColor: 'rgba(255,255,255,0.22)',
   },
   cardTitle: {
     fontSize:   12,

@@ -1,18 +1,7 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { BleManager, Device, Subscription, State } from 'react-native-ble-plx';
 import { Platform } from 'react-native';
-
-const NUS_SERVICE = '6E400001-B5A3-F393-E0A9-E50E24DCCA9E';
-const NUS_TX      = '6E400003-B5A3-F393-E0A9-E50E24DCCA9E';
-const DEVICE_NAME = 'ForeverMeasure';
-
-// Singleton — created once for the app lifetime so CoreBluetooth has time to
-// initialise (and show the iOS permission dialog) before the user taps the FAB.
-let _manager: BleManager | null = null;
-function getManager(): BleManager {
-  if (!_manager) _manager = new BleManager();
-  return _manager;
-}
+import { NUS_SERVICE, NUS_TX, DEVICE_NAME, getManager } from '../services/bleDevice';
 
 export type BLEStatus = 'idle' | 'scanning' | 'connecting' | 'connected' | 'error';
 

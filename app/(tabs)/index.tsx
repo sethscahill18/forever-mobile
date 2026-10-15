@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
-import { View, Text, FlatList, Image, StyleSheet } from 'react-native';
+import { View, Text, FlatList, Image, StyleSheet, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/store/auth.store';
 import { useSettingsStore } from '../../src/store/settings.store';
@@ -35,7 +35,10 @@ function MilestoneCard({ item, primaryUnit, colors, styles }: {
 }) {
   const { profile, measurement } = item;
   return (
-    <View style={styles.card}>
+    <Pressable
+      style={styles.card}
+      onPress={() => router.push({ pathname: '/measurement-detail', params: { id: measurement.id } })}
+    >
       <View style={styles.cardHeader}>
         <View style={styles.avatar}>
           {profile.profileImage ? (
@@ -68,7 +71,7 @@ function MilestoneCard({ item, primaryUnit, colors, styles }: {
         <Text style={styles.dot}> · </Text>
         {formatDate(measurement.measuredAt)}
       </Text>
-    </View>
+    </Pressable>
   );
 }
 

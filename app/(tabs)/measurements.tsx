@@ -1,13 +1,13 @@
-import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View, Text, StyleSheet, Pressable, ActivityIndicator,
-  Animated, Alert, TextInput, Keyboard, ScrollView,
+  Alert, TextInput, Keyboard, ScrollView,
   Modal, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { Ionicons } from '@expo/vector-icons';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '../../src/store/auth.store';
 import { useSettingsStore } from '../../src/store/settings.store';
 import { useBLEMeasure } from '../../src/hooks/useBLEMeasure';
@@ -17,39 +17,37 @@ import { Profile } from '../../src/db/schema';
 import { toCm, formatHeight } from '../../src/utils/weight';
 import { useAppTheme } from '../../src/store/appTheme.store';
 import { ThemeColors } from '../../src/theme/tokens';
-
-type Mode = 'hidden' | 'pick-profile';
-
-const PANEL_HEIGHT_PICK_PROFILE = 300;
+import { ProfileAvatar } from '../../src/components/all/ProfileAvatar';
 
 type PendingMeasurement = {
   heightCm:   number;
   heightFt?:  number;
   heightIn?:  number;
   measuredAt: number;
-  returnMode: 'hidden' | 'manual';
+  source:     'ble' | 'manual';
 };
 
 function formatDateLabel(d: Date): string {
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+// Flow: 1) choose the profile  →  2) BLE reading or manual entry  →  3) confirm & save.
 export default function MeasurementsScreen() {
   const userId = useAuthStore((s) => s.userId);
+  const { profileId: presetParam } = useLocalSearchParams<{ profileId?: string }>();
+  // Ref so clearing the param below doesn't re-run (and reset) the focus effect.
+  const presetRef = useRef(presetParam);
+  presetRef.current = presetParam;
   const unit   = useSettingsStore((s) => s.primaryUnit);
 
   const { status, valueCm, saveRequestedCm, clearSaveRequest, error, startScan, disconnect } = useBLEMeasure();
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
-  const [mode,               setMode]               = useState<Mode>('hidden');
   const [saved,              setSaved]              = useState(false);
   const [profileList,        setProfileList]        = useState<Profile[]>([]);
-  const [pending,            setPending]            = useState<PendingMeasurement | null>(null);
+  const [selectedProfile,    setSelectedProfile]    = useState<Profile | null>(null);
   const [manualModalVisible, setManualModalVisible] = useState(false);
-
-  const panelAnim    = useRef(new Animated.Value(0)).current;
-  const keyboardAnim = useRef(new Animated.Value(0)).current;
 
   // Manual entry state
   const [manualCm,       setManualCm]       = useState('');
@@ -58,61 +56,96 @@ export default function MeasurementsScreen() {
   const [manualDate,     setManualDate]     = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  // Load profiles and auto-start BLE scan whenever the tab is focused
+  // Each visit starts at profile selection; the BLE scan only begins once a profile is chosen.
   useFocusEffect(
     useCallback(() => {
-      if (userId) getProfiles(userId).then(setProfileList);
-      startScan();
+      setSelectedProfile(null);
+      const presetProfileId = presetRef.current;
+      if (userId) {
+        getProfiles(userId).then((list) => {
+          setProfileList(list);
+          // Launched from a profile page: the profile is already known, so skip selection.
+          const preset = presetProfileId ? list.find((p) => p.id === presetProfileId) : undefined;
+          if (preset) {
+            setSelectedProfile(preset);
+            startScan();
+          }
+          // Consume the param so later visits via the tab bar start at profile selection.
+          if (presetProfileId) router.setParams({ profileId: undefined });
+        });
+      }
       return () => {
         disconnect();
-        setMode('hidden');
+        setSelectedProfile(null);
         setManualModalVisible(false);
       };
     }, [userId]),
   );
 
-  // Lift pick-profile panel above keyboard (precautionary)
-  useEffect(() => {
-    const show = Keyboard.addListener('keyboardWillShow', (e) => {
-      Animated.timing(keyboardAnim, {
-        toValue: e.endCoordinates.height,
-        duration: e.duration ?? 250,
-        useNativeDriver: false,
-      }).start();
-    });
-    const hide = Keyboard.addListener('keyboardWillHide', (e) => {
-      Animated.timing(keyboardAnim, {
-        toValue: 0,
-        duration: e.duration ?? 250,
-        useNativeDriver: false,
-      }).start();
-    });
-    return () => { show.remove(); hide.remove(); };
-  }, []);
+  function chooseProfile(profile: Profile) {
+    setSelectedProfile(profile);
+    startScan();
+  }
 
-  // Animate pick-profile panel
-  useEffect(() => {
-    Animated.spring(panelAnim, {
-      toValue: mode === 'pick-profile' ? PANEL_HEIGHT_PICK_PROFILE : 0,
-      useNativeDriver: false,
-      bounciness: 4,
-    }).start();
-  }, [mode]);
+  function changeProfile() {
+    disconnect();
+    setSelectedProfile(null);
+  }
 
-  // Physical save button on device: "SAVE,17.5" → trigger profile picker
+  // Confirm, then save the measurement to the chosen profile
+  function confirmAndSave(m: PendingMeasurement) {
+    if (!selectedProfile) return;
+    const profile = selectedProfile;
+
+    const valueLabel = m.heightFt != null && m.heightIn != null
+      ? `${m.heightFt} ft ${m.heightIn} in`
+      : formatHeight(m.heightCm, unit);
+
+    Alert.alert(
+      'Confirm Measurement',
+      `Save ${valueLabel} to ${profile.name}?`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+          onPress: () => { if (m.source === 'manual') setManualModalVisible(true); },
+        },
+        {
+          text: 'Save',
+          onPress: async () => {
+            try {
+              await saveMeasurement(profile.id, m.heightCm, m.measuredAt, m.heightFt, m.heightIn);
+              setSaved(true);
+              setTimeout(() => setSaved(false), 1200);
+              if (m.source === 'manual') {
+                setManualCm('');
+                setManualFt('');
+                setManualIn('');
+                setManualDate(new Date());
+                startScan(); // resume BLE scan after a manual save
+              }
+            } catch (e) {
+              if (m.source === 'manual') setManualModalVisible(true);
+              Alert.alert('Save failed', e instanceof Error ? e.message : String(e));
+            }
+          },
+        },
+      ],
+    );
+  }
+
+  // Physical save button on device: "SAVE,17.5" → confirm for the chosen profile
   useEffect(() => {
     if (saveRequestedCm == null) return;
-    if (status !== 'connected') return;
-    setPending({ heightCm: saveRequestedCm, measuredAt: Date.now(), returnMode: 'hidden' });
-    setMode('pick-profile');
+    if (status !== 'connected' || !selectedProfile) return;
+    confirmAndSave({ heightCm: saveRequestedCm, measuredAt: Date.now(), source: 'ble' });
     clearSaveRequest();
   }, [saveRequestedCm]);
 
-  // BLE: capture current reading and proceed to profile selection
-  function handleBleRequest() {
+  // BLE: use the current reading
+  function handleBleSave() {
     if (valueCm === null) return;
-    setPending({ heightCm: valueCm, measuredAt: Date.now(), returnMode: 'hidden' });
-    setMode('pick-profile');
+    confirmAndSave({ heightCm: valueCm, measuredAt: Date.now(), source: 'ble' });
   }
 
   // Manual: open modal, stopping any BLE scan in progress
@@ -125,10 +158,11 @@ export default function MeasurementsScreen() {
   function closeManualModal() {
     Keyboard.dismiss();
     setManualModalVisible(false);
+    if (selectedProfile) startScan();
   }
 
-  // Manual: validate entry, close modal, and proceed to profile selection
-  function handleManualRequest() {
+  // Manual: validate entry, close modal, then confirm
+  function handleManualSave() {
     Keyboard.dismiss();
     let heightCm: number;
     let heightFt: number | undefined;
@@ -154,61 +188,7 @@ export default function MeasurementsScreen() {
     }
 
     setManualModalVisible(false);
-    setPending({ heightCm, heightFt, heightIn, measuredAt: manualDate.getTime(), returnMode: 'manual' });
-    setMode('pick-profile');
-  }
-
-  // Save pending measurement to the chosen profile
-  function handleProfilePick(profile: Profile) {
-    if (!pending) return;
-
-    const valueLabel = pending.heightFt != null && pending.heightIn != null
-      ? `${pending.heightFt} ft ${pending.heightIn} in`
-      : formatHeight(pending.heightCm, unit);
-
-    Alert.alert(
-      'Confirm Measurement',
-      `Save ${valueLabel} to ${profile.name}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Save',
-          onPress: async () => {
-            try {
-              await saveMeasurement(profile.id, pending.heightCm, pending.measuredAt, pending.heightFt, pending.heightIn);
-              const returnMode = pending.returnMode;
-              setPending(null);
-              setSaved(true);
-              setTimeout(() => {
-                setSaved(false);
-                setMode('hidden');
-                if (returnMode === 'manual') {
-                  setManualCm('');
-                  setManualFt('');
-                  setManualIn('');
-                  setManualDate(new Date());
-                  startScan(); // restart BLE scan after manual save
-                }
-              }, 1200);
-            } catch (e) {
-              Alert.alert('Save failed', e instanceof Error ? e.message : String(e));
-            }
-          },
-        },
-      ],
-    );
-  }
-
-  function closePanel() {
-    setPending(null);
-    setMode('hidden');
-  }
-
-  function backFromPickProfile() {
-    setMode('hidden');
-    if (pending?.returnMode === 'manual') {
-      setManualModalVisible(true); // return to manual entry modal
-    }
+    confirmAndSave({ heightCm, heightFt, heightIn, measuredAt: manualDate.getTime(), source: 'manual' });
   }
 
   const hasProfiles = profileList.length > 0;
@@ -227,9 +207,38 @@ export default function MeasurementsScreen() {
               <Text style={styles.noProfileBtnText}>Go to Profiles</Text>
             </Pressable>
           </View>
+        ) : !selectedProfile ? (
+          /* ── Step 1: choose the profile ── */
+          <View style={styles.pickWrap}>
+            <Text style={styles.pickTitle}>Who are you measuring?</Text>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.pickList}>
+              {profileList.map((p) => (
+                <Pressable
+                  key={p.id}
+                  style={({ pressed }) => [styles.profilePickRow, pressed && styles.profilePickRowPressed]}
+                  onPress={() => chooseProfile(p)}
+                >
+                  <ProfileAvatar profile={p} color={colors.primary} size={44} />
+                  <Text style={styles.pickName}>{p.name}</Text>
+                  <Ionicons name="chevron-forward" size={16} color={colors.borderStrong} />
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
         ) : (
+          /* ── Step 2: BLE reading or manual entry ── */
           <>
-            {/* Center: BLE status display */}
+            <View style={styles.selectedBar}>
+              <ProfileAvatar profile={selectedProfile} color={colors.primary} size={36} />
+              <View style={styles.selectedText}>
+                <Text style={styles.selectedLabel}>Measuring</Text>
+                <Text style={styles.selectedName}>{selectedProfile.name}</Text>
+              </View>
+              <Pressable onPress={changeProfile} hitSlop={10} style={styles.changeBtn}>
+                <Text style={styles.changeText}>Change</Text>
+              </Pressable>
+            </View>
+
             <View style={styles.bleContent}>
               {(status === 'scanning' || status === 'connecting') && (
                 <>
@@ -265,68 +274,28 @@ export default function MeasurementsScreen() {
               {saved && <Text style={styles.savedBanner}>Saved!</Text>}
             </View>
 
-            {/* Bottom actions — hidden while pick-profile panel is open */}
-            {mode === 'hidden' && (
-              <View style={styles.bottomActions}>
-                {status === 'connected' && (
-                  <Pressable
-                    style={[styles.btnPrimary, valueCm === null && styles.btnDisabled]}
-                    onPress={handleBleRequest}
-                    disabled={valueCm === null}
-                  >
-                    <Text style={styles.btnPrimaryText}>Save Measurement</Text>
-                  </Pressable>
-                )}
-                <Pressable style={styles.btnSecondary} onPress={openManual}>
-                  <Text style={styles.btnSecondaryText}>Enter manually</Text>
+            <View style={styles.bottomActions}>
+              {status === 'connected' && (
+                <Pressable
+                  style={[styles.btnPrimary, valueCm === null && styles.btnDisabled]}
+                  onPress={handleBleSave}
+                  disabled={valueCm === null}
+                >
+                  <Text style={styles.btnPrimaryText}>Save Measurement</Text>
                 </Pressable>
-                {status === 'connected' && (
-                  <Pressable style={styles.disconnectLink} onPress={disconnect}>
-                    <Text style={styles.disconnectText}>Disconnect</Text>
-                  </Pressable>
-                )}
-              </View>
-            )}
+              )}
+              <Pressable style={styles.btnSecondary} onPress={openManual}>
+                <Text style={styles.btnSecondaryText}>Enter manually</Text>
+              </Pressable>
+              {status === 'connected' && (
+                <Pressable style={styles.disconnectLink} onPress={disconnect}>
+                  <Text style={styles.disconnectText}>Disconnect</Text>
+                </Pressable>
+              )}
+            </View>
           </>
         )}
       </Pressable>
-
-      {/* ── Profile picker panel ── */}
-      <Animated.View
-        style={[styles.panel, { height: panelAnim, bottom: keyboardAnim }]}
-        pointerEvents={mode === 'hidden' ? 'none' : 'auto'}
-      >
-        {mode === 'pick-profile' && (
-          <View style={styles.panelInner}>
-            <View style={styles.panelHeader}>
-              <Pressable onPress={backFromPickProfile} hitSlop={10} style={styles.backBtn}>
-                <Ionicons name="chevron-back" size={20} color={colors.primary} />
-                <Text style={styles.backText}>Back</Text>
-              </Pressable>
-              <Text style={styles.panelTitle}>Select Profile</Text>
-              <Pressable onPress={closePanel} hitSlop={10}>
-                <Ionicons name="close" size={22} color={colors.textMuted} />
-              </Pressable>
-            </View>
-            {saved && <Text style={styles.savedBanner}>Saved!</Text>}
-            <ScrollView style={styles.profileScroll} showsVerticalScrollIndicator={false}>
-              {profileList.map((p) => (
-                <Pressable
-                  key={p.id}
-                  style={styles.profilePickRow}
-                  onPress={() => handleProfilePick(p)}
-                >
-                  <View style={styles.pickAvatar}>
-                    <Text style={styles.pickAvatarText}>{p.name.charAt(0).toUpperCase()}</Text>
-                  </View>
-                  <Text style={styles.pickName}>{p.name}</Text>
-                  <Ionicons name="chevron-forward" size={16} color={colors.borderStrong} />
-                </Pressable>
-              ))}
-            </ScrollView>
-          </View>
-        )}
-      </Animated.View>
 
       {/* ── Manual entry modal ── */}
       <Modal
@@ -395,8 +364,8 @@ export default function MeasurementsScreen() {
                 <Pressable style={styles.btnSecondaryFlex} onPress={closeManualModal}>
                   <Text style={styles.btnSecondaryText}>Cancel</Text>
                 </Pressable>
-                <Pressable style={styles.btnPrimaryFlex} onPress={handleManualRequest}>
-                  <Text style={styles.btnPrimaryText}>Next</Text>
+                <Pressable style={styles.btnPrimaryFlex} onPress={handleManualSave}>
+                  <Text style={styles.btnPrimaryText}>Save</Text>
                 </Pressable>
               </View>
             </View>
@@ -448,28 +417,29 @@ function makeStyles(colors: ThemeColors) {
     disconnectLink: { alignItems: 'center', paddingVertical: 8 },
     disconnectText: { color: colors.textFaint, fontSize: 14 },
 
-    // Pick-profile panel
-    panel: {
-      position: 'absolute', left: 0, right: 0,
-      backgroundColor: colors.surface,
-      borderTopLeftRadius: 20, borderTopRightRadius: 20,
-      overflow: 'hidden',
-      shadowColor: '#000', shadowOffset: { width: 0, height: -3 },
-      shadowOpacity: 0.1, shadowRadius: 8, elevation: 12,
-    },
-    panelInner:  { flex: 1, paddingHorizontal: 24, paddingTop: 20, paddingBottom: 20 },
-    panelTitle:  { fontSize: 17, fontWeight: '700', color: colors.textPrimary },
-    panelHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-    backBtn:     { flexDirection: 'row', alignItems: 'center', gap: 2 },
-    backText:    { color: colors.primary, fontSize: 15, fontWeight: '500' },
-    profileScroll:  { flex: 1, marginTop: 4 },
+    // Step 1: profile selection
+    pickWrap:  { flex: 1, paddingHorizontal: 24, paddingTop: 24 },
+    pickTitle: { fontSize: 22, fontWeight: '700', color: colors.textPrimary, marginBottom: 16 },
+    pickList:  { paddingBottom: 32, gap: 10 },
     profilePickRow: {
-      flexDirection: 'row', alignItems: 'center', gap: 12,
-      paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border,
+      flexDirection: 'row', alignItems: 'center', gap: 14,
+      padding: 14, borderRadius: 14,
+      backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
     },
-    pickAvatar:     { width: 38, height: 38, borderRadius: 19, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
-    pickAvatarText: { color: colors.onPrimary, fontWeight: '700', fontSize: 16 },
-    pickName:       { flex: 1, fontSize: 15, fontWeight: '500', color: colors.textSecondary },
+    profilePickRowPressed: { borderColor: colors.primary },
+    pickName: { flex: 1, fontSize: 16, fontWeight: '600', color: colors.textSecondary },
+
+    // Step 2: selected-profile bar
+    selectedBar: {
+      flexDirection: 'row', alignItems: 'center', gap: 12,
+      marginHorizontal: 24, marginTop: 16, padding: 12, borderRadius: 14,
+      backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
+    },
+    selectedText:  { flex: 1 },
+    selectedLabel: { fontSize: 12, color: colors.textMuted },
+    selectedName:  { fontSize: 16, fontWeight: '700', color: colors.textPrimary },
+    changeBtn:     { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14, borderWidth: 1, borderColor: colors.primary },
+    changeText:    { fontSize: 13, fontWeight: '600', color: colors.primary },
 
     // Manual entry modal
     modalSafe:    { flex: 1, backgroundColor: colors.background },

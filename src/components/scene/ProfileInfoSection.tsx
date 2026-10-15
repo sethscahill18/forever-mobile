@@ -1,5 +1,5 @@
 import { View, Text, Image, StyleSheet } from 'react-native';
-import { BlurView } from 'expo-blur';
+import { Glass } from '../shared/Glass';
 import { useFonts, Delius_400Regular } from '@expo-google-fonts/delius';
 import { Nunito_400Regular } from '@expo-google-fonts/nunito';
 import { Profile } from '../../db/schema';
@@ -7,12 +7,13 @@ import { AvatarDisplay } from '../avatar/AvatarDisplay';
 import { buildAvatarConfig } from '../avatar/types';
 import { PROFILE_ICONS } from '../avatar/avatarAssets';
 import { resolveDocUri } from '../../utils/imageStorage';
+import { formatAge } from '../../utils/age';
 
 interface Props {
   profile: Profile;
 }
 
-const FRAME_SIZE = 69;
+export const FRAME_SIZE = 69;
 const CLIP_SIZE  = 52;  // inner avatar circle
 
 export function ProfileInfoSection({ profile }: Props) {
@@ -22,8 +23,7 @@ export function ProfileInfoSection({ profile }: Props) {
     <View style={styles.root}>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         {/* Liquid Glass frame */}
-        <BlurView intensity={70} tint="light" style={styles.glassFrame}>
-          <View style={styles.specular} />
+        <Glass tint="light" style={styles.glassFrame}>
           <View style={styles.avatarClip}>
             {profile.profileImage ? (
               <Image
@@ -41,7 +41,7 @@ export function ProfileInfoSection({ profile }: Props) {
               <AvatarDisplay config={buildAvatarConfig(profile)} size={CLIP_SIZE} compact />
             )}
           </View>
-        </BlurView>
+        </Glass>
         <View style={{ marginLeft: 12, justifyContent: 'center' }}>
           <Text
             style={[styles.name, fontsLoaded ? { fontFamily: 'Delius_400Regular' } : null]}
@@ -49,7 +49,11 @@ export function ProfileInfoSection({ profile }: Props) {
           >
             {profile.name}
           </Text>
-          <Text style={{ fontSize: 13, color: '#374151', marginTop: 1, fontFamily: fontsLoaded ? 'Nunito_400Regular' : undefined }}>12 years, 3 months</Text>
+          {profile.dateOfBirth != null && (
+            <Text style={{ fontSize: 13, color: '#374151', marginTop: 1, fontFamily: fontsLoaded ? 'Nunito_400Regular' : undefined }}>
+              {formatAge(profile.dateOfBirth, Date.now())}
+            </Text>
+          )}
         </View>
       </View>
     </View>
@@ -67,20 +71,9 @@ const styles = StyleSheet.create({
     width:           FRAME_SIZE,
     height:          FRAME_SIZE,
     borderRadius:    FRAME_SIZE / 2,
-    overflow:        'hidden',
-    borderWidth:     0.5,
-    borderColor:     'rgba(255,255,255,0.6)',
     alignItems:      'center',
     justifyContent:  'center',
     marginTop:       10,
-  },
-  specular: {
-    position:        'absolute',
-    top:             0,
-    left:            0,
-    right:           0,
-    height:          '50%',
-    backgroundColor: 'rgba(255,255,255,0.22)',
   },
   avatarClip: {
     width:           CLIP_SIZE,

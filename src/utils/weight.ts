@@ -29,3 +29,14 @@ export function toGraphValue(cm: number, unit: HeightUnit): number {
 export function graphAxisLabel(unit: HeightUnit): string {
   return unit === 'cm' ? 'cm' : 'in';
 }
+
+// Signed change in height, e.g. "+4.2 cm" or "−1.6 in"
+export function formatDelta(deltaCm: number, unit: HeightUnit): string {
+  const sign = deltaCm >= 0 ? '+' : '−';
+  if (unit === 'cm') {
+    const val = Math.abs(Math.round(deltaCm * 10) / 10);
+    return `${sign}${val} cm`;
+  }
+  const totalIn = Math.round(Math.abs(deltaCm / 2.54) * 10) / 10;
+  return `${sign}${totalIn} in`;
+}

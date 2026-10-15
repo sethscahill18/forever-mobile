@@ -17,6 +17,7 @@ export default function CreateProfileScreen() {
 
   async function handleSave(values: ProfileFormValues) {
     if (!values.name.trim()) return Alert.alert('Name is required');
+    if (values.dateOfBirth == null) return Alert.alert('Date of birth is required', 'It lets the app show age and compare heights at the same age.');
     if (!userId) return;
     setLoading(true);
     try {

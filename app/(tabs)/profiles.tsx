@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { View, Text, FlatList, Pressable, StyleSheet, Image } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BlurView } from 'expo-blur';
+import { Glass } from '../../src/components/shared/Glass';
 import { useAuthStore } from '../../src/store/auth.store';
 import { useSettingsStore } from '../../src/store/settings.store';
 import { getProfiles } from '../../src/services/profile.service';
@@ -88,10 +88,7 @@ export default function ProfilesScreen() {
             style={({ pressed }) => [styles.cardWrapper, pressed && styles.cardPressed]}
             onPress={() => router.push({ pathname: '/profile-timeline', params: { id: profile.id } })}
           >
-            <BlurView intensity={70} tint={glassTint} style={styles.card}>
-              {/* Specular highlight */}
-              <View style={styles.specular} />
-
+            <Glass tint={glassTint} style={styles.card}>
               <View style={styles.avatar}>
                 {profile.profileImage ? (
                   <Image source={{ uri: resolveDocUri(profile.profileImage)! }} style={styles.avatarImg} />
@@ -116,7 +113,7 @@ export default function ProfilesScreen() {
               </View>
 
               <Ionicons name="chevron-forward" size={18} color={glassIconSoft} />
-            </BlurView>
+            </Glass>
           </Pressable>
         )}
       />
@@ -126,10 +123,9 @@ export default function ProfilesScreen() {
         style={styles.fab}
         onPress={() => router.push('/(tabs)/create-profile')}
       >
-        <BlurView intensity={70} tint={glassTint} style={styles.fabInner}>
-          <View style={styles.specular} />
+        <Glass tint={glassTint} style={styles.fabInner}>
           <Ionicons name="add" size={36} color={glassIconStrong} />
-        </BlurView>
+        </Glass>
       </Pressable>
     </View>
   );
@@ -150,19 +146,8 @@ function makeStyles(colors: ThemeColors) {
       flexDirection:  'row',
       alignItems:     'center',
       borderRadius:   20,
-      overflow:       'hidden',
       padding:        16,
       gap:            14,
-      borderWidth:    0.5,
-      borderColor:    'rgba(255,255,255,0.6)',
-    },
-    specular: {
-      position:        'absolute',
-      top:             0,
-      left:            0,
-      right:           0,
-      height:          '50%',
-      backgroundColor: 'rgba(255,255,255,0.22)',
     },
 
     avatar: {
@@ -186,8 +171,6 @@ function makeStyles(colors: ThemeColors) {
       width: 56, height: 56,
       borderRadius: 28,
       alignItems: 'center', justifyContent: 'center',
-      borderWidth: 0.5,
-      borderColor: 'rgba(255,255,255,0.6)',
     },
 
   });

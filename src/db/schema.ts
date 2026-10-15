@@ -12,6 +12,7 @@ export const profiles = sqliteTable('profiles', {
   name:        text('name').notNull(),
   avatar:      text('avatar').notNull().default('child'),
   gender:      text('gender').notNull().default('male'),
+  dateOfBirth: integer('date_of_birth'),
   colourPalette: text('colour_palette').notNull().default('princess'),
   doorStyle:   text('door_style').notNull().default('style_1'),
   doorColour:  text('door_colour').notNull().default('black'),

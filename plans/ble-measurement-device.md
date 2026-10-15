@@ -14,7 +14,14 @@ The user has an Adafruit Feather nRF52840 Express running `physical_device/Basic
 | Role | UUID |
 |---|---|
 | NUS Service | `6E400001-B5A3-F393-E0A9-E50E24DCCA9E` |
+| RX characteristic (iPhone → device, write) | `6E400002-B5A3-F393-E0A9-E50E24DCCA9E` |
 | TX characteristic (device → iPhone, notify) | `6E400003-B5A3-F393-E0A9-E50E24DCCA9E` |
+
+## What the phone sends (iPhone → device)
+
+- **`rgb <r> <g> <b>\n`** (values 0–255, e.g. `rgb 255 80 0`) written to the RX characteristic. Sent after the user scans a theme attachment's NFC tag (Settings → Scan Tag) (sent automatically, no confirmation prompt), so the device can set its illuminated button to that theme's colour. The phone connects briefly, writes, then disconnects (or reuses an existing connection).
+- The device may reply `RGB_OK,<r>,<g>,<b>` on the TX characteristic. The app waits ~2s for it and shows a "Device updated" alert if it arrives; no reply is not an error.
+- Colours per theme: `src/constants/deviceLedColours.ts`. Sender: `src/services/bleDevice.ts` → `sendRgbToDevice()`. Firmware side: `physical_device/Firmware_instructions.md`.
 
 ## iOS pairing — nothing required
 
