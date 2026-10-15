@@ -2,7 +2,6 @@ import React, { useMemo, useState } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet, Image } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { AvatarDisplay } from '../src/components/avatar/AvatarDisplay';
 import { useAvatarDraftStore } from '../src/store/avatarDraft.store';
 import { BodyType } from '../src/components/avatar/types';
 import { COMPLETE_AVATARS, CANVAS_ASPECT, BODY_TYPE_SCALE } from '../src/components/avatar/avatarAssets';
@@ -71,18 +70,6 @@ export default function AvatarBuilderScreen() {
           ),
         }}
       />
-
-      {/* Selected avatar preview */}
-      <View style={styles.preview}>
-        {config.avatarId ? (
-          <AvatarDisplay config={config} size={180} />
-        ) : (
-          <View style={styles.previewEmpty}>
-            <Ionicons name="person-outline" size={40} color={colors.borderStrong} />
-            <Text style={styles.previewEmptyText}>Select an avatar below</Text>
-          </View>
-        )}
-      </View>
 
       {/* Body type selector — always shows all four; disables those with no avatars */}
       <View style={styles.bodyTypeRow}>
@@ -155,18 +142,6 @@ function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     doneBtn:   { color: colors.primary, fontWeight: '700', fontSize: 16 },
-
-    preview: {
-      alignItems:        'center',
-      justifyContent:    'center',
-      paddingVertical:   24,
-      backgroundColor:   colors.surfaceAlt,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
-      minHeight:         220,
-    },
-    previewEmpty:     { alignItems: 'center', gap: 8 },
-    previewEmptyText: { fontSize: 14, color: colors.textFaint },
 
     // Body type selector
     bodyTypeRow: {
