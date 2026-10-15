@@ -21,13 +21,13 @@ type Props = ViewProps & {
 export function Glass({ tint = 'light', style, children, ...rest }: Props) {
   if (HAS_LIQUID_GLASS) {
     return (
-      <GlassView glassEffectStyle="regular" colorScheme={tint} style={style} {...rest}>
+      <GlassView glassEffectStyle="clear" colorScheme={tint} style={style} {...rest}>
         {children}
       </GlassView>
     );
   }
   return (
-    <BlurView intensity={70} tint={tint} style={[style, styles.fallback]} {...rest}>
+    <BlurView intensity={20} tint={tint} style={[style, styles.fallback]} {...rest}>
       <View style={styles.specular} />
       {children}
     </BlurView>
@@ -46,6 +46,6 @@ const styles = StyleSheet.create({
     left:            0,
     right:           0,
     height:          '50%',
-    backgroundColor: 'rgba(255,255,255,0.22)',
+    backgroundColor: 'rgba(255,255,255,0.10)',
   },
 });
